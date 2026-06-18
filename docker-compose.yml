@@ -1,0 +1,36 @@
+services:
+  pipepush:
+    build: .
+    # Or use the prebuilt image:
+    # image: ghcr.io/gerry3010/pipepush:latest
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://pipepush:${POSTGRES_PASSWORD:-secret}@postgres:5432/pipepush?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_EMAIL: ${VAPID_EMAIL:-admin@example.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: pipepush
+      POSTGRES_USER: pipepush
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipepush"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: pipepush
+          POSTGRES_USER: pipepush
+          POSTGRES_PASSWORD: secret
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U pipepush"
+          --health-interval 5s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - run: go vet ./...
+      - run: go build ./...
+      - name: Unit tests (incl. crypto)
+        run: go test ./...
+      - name: End-to-end test
+        env:
+          DATABASE_URL: postgres://pipepush:secret@localhost:5433/pipepush?sslmode=disable
+          JWT_SECRET: ci-test-secret
+          PORT: "8088"
+        run: |
+          go run ./cmd/pipepush-server &
+          sleep 5
+          PIPEPUSH_E2E_URL=http://localhost:8088 go test ./internal/client -run EndToEnd -v
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Install web deps
+        working-directory: web
+        run: npm install
+      - name: Build web
+        working-directory: web
+        run: npm run build
+      - name: Crypto interop (Go <-> browser)
+        run: PIPEPUSH_INTEROP=1 go test ./internal/crypto -run Interop -v

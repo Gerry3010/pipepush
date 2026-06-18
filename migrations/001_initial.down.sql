@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS runs;
+DROP TABLE IF EXISTS notification_tokens;
+DROP TABLE IF EXISTS pipelines;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS vapid_subscriptions;
+DROP TABLE IF EXISTS users;

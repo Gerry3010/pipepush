@@ -1,0 +1,257 @@
+:root {
+  --bg: #1e1e2e;
+  --surface: #28283c;
+  --surface-2: #313145;
+  --text: #cdd6f4;
+  --muted: #6c7086;
+  --primary: #7d56f4;
+  --success: #43bf6d;
+  --error: #f2495c;
+  --warning: #ff9830;
+  --running: #5794f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.topbar nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.topbar nav a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.topbar nav a:hover {
+  color: var(--primary);
+}
+
+.email {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.card.narrow {
+  max-width: 380px;
+  margin: 3rem auto;
+}
+
+.link-card {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+.link-card:hover {
+  border-color: var(--primary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+label {
+  display: block;
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--surface-2);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+button {
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+button.primary {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  margin-top: 0.75rem;
+}
+
+button.primary:disabled {
+  opacity: 0.6;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  padding: 0;
+  text-decoration: underline;
+}
+
+.inline-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.inline-form input,
+.inline-form select {
+  width: auto;
+  flex: 1;
+  min-width: 160px;
+}
+
+.inline-form button.primary {
+  margin-top: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 1.5rem;
+  line-height: 1.5;
+}
+
+.error {
+  color: var(--error);
+  font-size: 0.9rem;
+}
+
+.date {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+table.runs {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.runs td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--surface-2);
+  font-size: 0.9rem;
+}
+
+.run .glyph {
+  font-weight: 700;
+}
+.run-success .glyph {
+  color: var(--success);
+}
+.run-failure .glyph {
+  color: var(--error);
+}
+.run-cancelled .glyph {
+  color: var(--muted);
+}
+.run-running .glyph {
+  color: var(--running);
+}
+.run-skipped .glyph {
+  color: var(--warning);
+}
+
+.dash-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.token-reveal code {
+  display: block;
+  background: var(--bg);
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin: 0.5rem 0;
+  word-break: break-all;
+  color: var(--warning);
+}
+
+.token-list {
+  list-style: none;
+  padding: 0;
+}
+
+.token-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.token-list li.revoked {
+  color: var(--muted);
+}
+
+section {
+  margin-top: 2rem;
+}

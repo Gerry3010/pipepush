@@ -1,0 +1,21 @@
+# Binaries (root-level build output only — not the cmd/ packages)
+/dist/
+/pipepush
+/pipepush-server
+
+# Env / secrets
+.env
+*.local
+
+# Web
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+
+# Go
+*.test
+*.out
+
+# OS / editor
+.DS_Store
+*.swp
