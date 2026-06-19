@@ -90,6 +90,24 @@ Once `pipepush whoami` succeeds:
    ```
    (Set `PIPEPUSH_TOKEN` and `PIPEPUSH_SERVER` as masked CI/CD variables.)
 
+   **Bitbucket Pipelines** — Bitbucket has no job-status variable, so notify from
+   `after-script` using `$BITBUCKET_EXIT_CODE`. Add to `bitbucket-pipelines.yml`:
+   ```yaml
+   pipelines:
+     default:
+       - step:
+           name: Build
+           script:
+             - echo "your build/test/deploy steps"
+           after-script:
+             - |
+               if [ "$BITBUCKET_EXIT_CODE" = "0" ]; then STATUS=success; else STATUS=failure; fi
+               curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" \
+                 -H "Content-Type: application/json" \
+                 -d "{\"token\":\"$PIPEPUSH_TOKEN\",\"status\":\"$STATUS\",\"pipeline\":\"$BITBUCKET_REPO_SLUG\",\"branch\":\"$BITBUCKET_BRANCH\",\"commit\":\"$BITBUCKET_COMMIT\",\"runId\":\"$BITBUCKET_BUILD_NUMBER\"}"
+   ```
+   (Set `PIPEPUSH_TOKEN` and `PIPEPUSH_SERVER` as Secured repository variables.)
+
    **Other providers** — the contract is just `POST $PIPEPUSH_SERVER/api/webhook`
    with JSON `{ token, status, pipeline?, branch?, commit?, runId?, duration?, message? }`.
    `status` accepts CI-native values (`passed`, `failed`, `aborted`, …) — they're

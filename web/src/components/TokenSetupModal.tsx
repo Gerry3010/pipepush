@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-type Provider = "github" | "gitlab" | "other";
+type Provider = "github" | "gitlab" | "bitbucket" | "other";
 
 interface Props {
   token: string;
@@ -12,6 +12,7 @@ interface Props {
 const PROVIDERS: { id: Provider; label: string }[] = [
   { id: "github", label: "GitHub Actions" },
   { id: "gitlab", label: "GitLab CI" },
+  { id: "bitbucket", label: "Bitbucket" },
   { id: "other", label: "Other (curl)" },
 ];
 
@@ -48,6 +49,25 @@ notify_pipepush:
         -d "{\\"token\\":\\"$PIPEPUSH_TOKEN\\",\\"status\\":\\"$CI_JOB_STATUS\\",\\"pipeline\\":\\"$CI_PIPELINE_NAME\\",\\"branch\\":\\"$CI_COMMIT_REF_NAME\\",\\"commit\\":\\"$CI_COMMIT_SHA\\"}"`;
 }
 
+function bitbucketSnippet(token: string, server: string): string {
+  return `# Set PIPEPUSH_TOKEN and PIPEPUSH_SERVER as repository variables (Secured):
+#   PIPEPUSH_TOKEN  = ${token}
+#   PIPEPUSH_SERVER = ${server}
+# Then in bitbucket-pipelines.yml, notify from after-script (runs on success AND failure):
+pipelines:
+  default:
+    - step:
+        name: Build
+        script:
+          - echo "your build/test/deploy steps"
+        after-script:
+          - |
+            if [ "$BITBUCKET_EXIT_CODE" = "0" ]; then STATUS=success; else STATUS=failure; fi
+            curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" \\
+              -H "Content-Type: application/json" \\
+              -d "{\\"token\\":\\"$PIPEPUSH_TOKEN\\",\\"status\\":\\"$STATUS\\",\\"pipeline\\":\\"$BITBUCKET_REPO_SLUG\\",\\"branch\\":\\"$BITBUCKET_BRANCH\\",\\"commit\\":\\"$BITBUCKET_COMMIT\\",\\"runId\\":\\"$BITBUCKET_BUILD_NUMBER\\"}"`;
+}
+
 function otherSnippet(token: string, server: string): string {
   return `curl -sf -X POST "${server}/api/webhook" \\
   -H "Content-Type: application/json" \\
@@ -61,12 +81,13 @@ export function TokenSetupModal({ token, serverUrl, pipelineBound, onClose }: Pr
   const [provider, setProvider] = useState<Provider>("github");
   const [copied, setCopied] = useState<"" | "token" | "snippet">("");
 
-  const snippet =
-    provider === "github"
-      ? githubSnippet(token, serverUrl)
-      : provider === "gitlab"
-        ? gitlabSnippet(token, serverUrl)
-        : otherSnippet(token, serverUrl);
+  const builders: Record<Provider, (t: string, s: string) => string> = {
+    github: githubSnippet,
+    gitlab: gitlabSnippet,
+    bitbucket: bitbucketSnippet,
+    other: otherSnippet,
+  };
+  const snippet = builders[provider](token, serverUrl);
 
   async function copy(text: string, what: "token" | "snippet") {
     try {
