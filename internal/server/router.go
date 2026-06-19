@@ -66,6 +66,7 @@ func NewRouter(cfg *config.ServerConfig, database *db.DB) http.Handler {
 			r.Get("/projects/{projectID}/tokens", tokenH.List)
 			r.Post("/tokens", tokenH.Create)
 			r.Delete("/tokens/{id}", tokenH.Revoke)
+			r.Delete("/tokens/{id}/permanent", tokenH.Delete)
 
 			r.Get("/pipelines/{pipelineID}/runs", runH.List)
 			r.Get("/runs/{id}", runH.Get)

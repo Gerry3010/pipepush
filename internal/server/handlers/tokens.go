@@ -87,3 +87,14 @@ func (h *TokenHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// Delete permanently removes a token (as opposed to Revoke, which deactivates it).
+func (h *TokenHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	uid := middleware.UserIDFromContext(r.Context())
+	id := chi.URLParam(r, "id")
+	if err := h.db.DeleteToken(r.Context(), id, uid); err != nil {
+		writeError(w, http.StatusInternalServerError, "could not delete token")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

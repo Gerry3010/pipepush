@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api, Pipeline, NotificationToken, Run } from "../api/client";
 import { decrypt, encrypt } from "../crypto/session";
+import { routingKey } from "../crypto/routing";
+import { TokenSetupModal } from "../components/TokenSetupModal";
 
 interface RunPayload {
   status: string;
@@ -29,7 +31,9 @@ export function ProjectDetail() {
   const [newPipeline, setNewPipeline] = useState("");
   const [newToken, setNewToken] = useState("");
   const [tokenPipeline, setTokenPipeline] = useState("");
-  const [createdToken, setCreatedToken] = useState<string | null>(null);
+  const [createdToken, setCreatedToken] = useState<{ token: string; pipelineBound: boolean } | null>(
+    null,
+  );
   const [err, setErr] = useState<string | null>(null);
 
   async function load() {
@@ -56,7 +60,8 @@ export function ProjectDetail() {
   async function createPipeline(e: React.FormEvent) {
     e.preventDefault();
     if (!id || !newPipeline.trim()) return;
-    await api.createPipeline(id, encrypt(newPipeline.trim()));
+    const name = newPipeline.trim();
+    await api.createPipeline(id, encrypt(name), await routingKey(name));
     setNewPipeline("");
     load();
   }
@@ -65,7 +70,7 @@ export function ProjectDetail() {
     e.preventDefault();
     if (!id || !newToken.trim()) return;
     const res = await api.createToken(encrypt(newToken.trim()), id, tokenPipeline);
-    setCreatedToken(res.plaintextToken);
+    setCreatedToken({ token: res.plaintextToken, pipelineBound: tokenPipeline !== "" });
     setNewToken("");
     load();
   }
@@ -146,13 +151,12 @@ export function ProjectDetail() {
         </form>
 
         {createdToken && (
-          <div className="card token-reveal">
-            <p>Copy this token now — shown only once:</p>
-            <code>{createdToken}</code>
-            <button className="link-btn" onClick={() => setCreatedToken(null)}>
-              dismiss
-            </button>
-          </div>
+          <TokenSetupModal
+            token={createdToken.token}
+            serverUrl={window.location.origin}
+            pipelineBound={createdToken.pipelineBound}
+            onClose={() => setCreatedToken(null)}
+          />
         )}
 
         <ul className="token-list">
@@ -161,7 +165,7 @@ export function ProjectDetail() {
               <span>
                 {t.active ? "●" : "○"} {decrypt(t.encryptedName)}
               </span>
-              {t.active && (
+              {t.active ? (
                 <button
                   className="link-btn"
                   onClick={async () => {
@@ -170,6 +174,18 @@ export function ProjectDetail() {
                   }}
                 >
                   revoke
+                </button>
+              ) : (
+                <button
+                  className="link-btn danger"
+                  onClick={async () => {
+                    if (!confirm("Permanently delete this revoked token? This cannot be undone."))
+                      return;
+                    await api.deleteToken(t.id);
+                    load();
+                  }}
+                >
+                  delete
                 </button>
               )}
             </li>

@@ -262,6 +262,13 @@ func (d *DB) RevokeToken(ctx context.Context, id, userID string) error {
 	return err
 }
 
+// DeleteToken permanently removes a token. Runs reference it via ON DELETE SET
+// NULL, so their history is preserved (token_id just becomes null).
+func (d *DB) DeleteToken(ctx context.Context, id, userID string) error {
+	_, err := d.pool.Exec(ctx, `DELETE FROM notification_tokens WHERE id = $1 AND user_id = $2`, id, userID)
+	return err
+}
+
 func (d *DB) TouchToken(ctx context.Context, id string) error {
 	_, err := d.pool.Exec(ctx, `UPDATE notification_tokens SET last_used_at = NOW() WHERE id = $1`, id)
 	return err

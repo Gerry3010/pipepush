@@ -97,8 +97,8 @@ export const api = {
 
   listPipelines: (projectId: string) =>
     req<Pipeline[]>("GET", `/projects/${projectId}/pipelines`),
-  createPipeline: (projectId: string, encryptedName: string) =>
-    req<Pipeline>("POST", `/projects/${projectId}/pipelines`, { encryptedName }),
+  createPipeline: (projectId: string, encryptedName: string, routingKey = "") =>
+    req<Pipeline>("POST", `/projects/${projectId}/pipelines`, { encryptedName, routingKey }),
 
   listTokens: (projectId: string) =>
     req<NotificationToken[]>("GET", `/projects/${projectId}/tokens`),
@@ -109,6 +109,7 @@ export const api = {
       pipelineId,
     }),
   revokeToken: (id: string) => req<void>("DELETE", `/tokens/${id}`),
+  deleteToken: (id: string) => req<void>("DELETE", `/tokens/${id}/permanent`),
 
   listRuns: (pipelineId: string, limit = 50) =>
     req<Run[]>("GET", `/pipelines/${pipelineId}/runs?limit=${limit}`),
