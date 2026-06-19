@@ -1,0 +1,11 @@
+.git
+dist
+web/node_modules
+web/dist
+*.md
+docs
+.github
+deploy.sh
+setup-nginx.sh
+.env
+.claude

@@ -11,6 +11,7 @@ import (
 	"github.com/Gerry3010/pipepush/internal/client"
 	"github.com/Gerry3010/pipepush/internal/crypto"
 	"github.com/Gerry3010/pipepush/internal/models"
+	"github.com/Gerry3010/pipepush/internal/routing"
 )
 
 // TestEndToEnd exercises the full flow against a running server.
@@ -83,7 +84,7 @@ func TestEndToEnd(t *testing.T) {
 
 	// 5. Create a pipeline.
 	encPipeName, _ := crypto.EncryptString(kp.PublicKey, "Deploy to Prod")
-	pipe, err := authed.CreatePipeline(ctx, proj.ID, encPipeName)
+	pipe, err := authed.CreatePipeline(ctx, proj.ID, encPipeName, routing.Key("Deploy to Prod"))
 	if err != nil {
 		t.Fatalf("create pipeline: %v", err)
 	}

@@ -115,9 +115,9 @@ func (c *Client) ListPipelines(ctx context.Context, projectID string) ([]*models
 	return out, err
 }
 
-func (c *Client) CreatePipeline(ctx context.Context, projectID, encName string) (*models.Pipeline, error) {
+func (c *Client) CreatePipeline(ctx context.Context, projectID, encName, routingKey string) (*models.Pipeline, error) {
 	var out models.Pipeline
-	err := c.do(ctx, http.MethodPost, "/api/projects/"+projectID+"/pipelines", models.CreatePipelineRequest{EncryptedName: encName}, &out)
+	err := c.do(ctx, http.MethodPost, "/api/projects/"+projectID+"/pipelines", models.CreatePipelineRequest{EncryptedName: encName, RoutingKey: routingKey}, &out)
 	return &out, err
 }
 

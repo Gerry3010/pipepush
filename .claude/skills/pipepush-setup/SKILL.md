@@ -39,17 +39,29 @@ Once `pipepush whoami` succeeds:
    ```
    Capture the pipeline ID.
 
-3. **Create a token bound to that pipeline** (required to receive runs):
-   ```bash
-   pipepush tokens create "<provider> (<repo>)" --project <project-id> --pipeline <pipeline-id>
-   ```
+3. **Create a token.** Pick the scope based on how the user wants to wire it up
+   — `tokens create` prints a ready-to-paste GitHub Actions snippet tailored to
+   the scope, so relay that output to the user.
+
+   - **Pipeline-bound** (one token per workflow; runs always go to this pipeline):
+     ```bash
+     pipepush tokens create "<provider> (<repo>)" --project <project-id> --pipeline <pipeline-id>
+     ```
+   - **Project-wide** (one token for the whole repo; each run is routed — and the
+     pipeline auto-created — by the `pipeline` name in the request, so the
+     workflow name decides the pipeline). Omit `--pipeline`:
+     ```bash
+     pipepush tokens create "<repo>" --project <project-id>
+     ```
+
    The plaintext token (`pp_…`) is printed **once**. Do NOT commit it. Instead:
    - Tell the user to store it as a CI secret named `PIPEPUSH_TOKEN`.
    - For GitHub: `gh secret set PIPEPUSH_TOKEN` (the user pastes the value), and
      `gh variable set PIPEPUSH_SERVER --body "<server url>"`.
 
 4. **Detect the CI provider** by inspecting the repo, then add a notification
-   step. Always run it on both success and failure.
+   step. Always run it on both success and failure. For a project-wide token the
+   request **must** include a non-empty `pipeline` name (e.g. `github.workflow`).
 
    **GitHub Actions** — add to the relevant job in `.github/workflows/*.yml`:
    ```yaml
@@ -81,7 +93,8 @@ Once `pipepush whoami` succeeds:
    **Other providers** — the contract is just `POST $PIPEPUSH_SERVER/api/webhook`
    with JSON `{ token, status, pipeline?, branch?, commit?, runId?, duration?, message? }`.
    `status` accepts CI-native values (`passed`, `failed`, `aborted`, …) — they're
-   normalized server-side.
+   normalized server-side. `pipeline` is optional for a pipeline-bound token but
+   **required** for a project-wide token (it selects/creates the pipeline by name).
 
 5. **Verify** end-to-end without waiting for a real build:
    ```bash

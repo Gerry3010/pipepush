@@ -24,6 +24,7 @@ type Pipeline struct {
 	UserID        string    `json:"userId"`
 	ProjectID     string    `json:"projectId"`
 	EncryptedName string    `json:"encryptedName"`
+	RoutingKey    string    `json:"routingKey,omitempty"` // hash of the plaintext name; lets project-scoped tokens route by name
 	CreatedAt     time.Time `json:"createdAt"`
 }
 
@@ -117,6 +118,7 @@ type CreateProjectRequest struct {
 
 type CreatePipelineRequest struct {
 	EncryptedName string `json:"encryptedName"`
+	RoutingKey    string `json:"routingKey,omitempty"`
 }
 
 type CreateTokenRequest struct {

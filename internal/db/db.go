@@ -141,14 +141,14 @@ func (d *DB) DeleteProject(ctx context.Context, id, userID string) error {
 
 // --- Pipelines ---
 
-func (d *DB) CreatePipeline(ctx context.Context, userID, projectID, encName string) (*models.Pipeline, error) {
+func (d *DB) CreatePipeline(ctx context.Context, userID, projectID, encName, routingKey string) (*models.Pipeline, error) {
 	var p models.Pipeline
 	err := d.pool.QueryRow(ctx, `
-		INSERT INTO pipelines (user_id, project_id, encrypted_name)
-		VALUES ($1, $2, $3)
-		RETURNING id, user_id, project_id, encrypted_name, created_at`,
-		userID, projectID, encName,
-	).Scan(&p.ID, &p.UserID, &p.ProjectID, &p.EncryptedName, &p.CreatedAt)
+		INSERT INTO pipelines (user_id, project_id, encrypted_name, routing_key)
+		VALUES ($1, $2, $3, NULLIF($4, ''))
+		RETURNING id, user_id, project_id, encrypted_name, COALESCE(routing_key, ''), created_at`,
+		userID, projectID, encName, routingKey,
+	).Scan(&p.ID, &p.UserID, &p.ProjectID, &p.EncryptedName, &p.RoutingKey, &p.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("creating pipeline: %w", err)
 	}
@@ -157,7 +157,7 @@ func (d *DB) CreatePipeline(ctx context.Context, userID, projectID, encName stri
 
 func (d *DB) ListPipelines(ctx context.Context, projectID, userID string) ([]*models.Pipeline, error) {
 	rows, err := d.pool.Query(ctx, `
-		SELECT id, user_id, project_id, encrypted_name, created_at
+		SELECT id, user_id, project_id, encrypted_name, COALESCE(routing_key, ''), created_at
 		FROM pipelines WHERE project_id = $1 AND user_id = $2
 		ORDER BY created_at DESC`, projectID, userID)
 	if err != nil {
@@ -170,14 +170,32 @@ func (d *DB) ListPipelines(ctx context.Context, projectID, userID string) ([]*mo
 func (d *DB) GetPipeline(ctx context.Context, id, userID string) (*models.Pipeline, error) {
 	var p models.Pipeline
 	err := d.pool.QueryRow(ctx, `
-		SELECT id, user_id, project_id, encrypted_name, created_at
+		SELECT id, user_id, project_id, encrypted_name, COALESCE(routing_key, ''), created_at
 		FROM pipelines WHERE id = $1 AND user_id = $2`, id, userID,
-	).Scan(&p.ID, &p.UserID, &p.ProjectID, &p.EncryptedName, &p.CreatedAt)
+	).Scan(&p.ID, &p.UserID, &p.ProjectID, &p.EncryptedName, &p.RoutingKey, &p.CreatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("getting pipeline: %w", err)
+	}
+	return &p, nil
+}
+
+// GetPipelineByRoutingKey finds a pipeline in a project by its routing key.
+// Used to resolve a project-scoped token's target pipeline from the webhook's
+// plaintext pipeline name. Returns (nil, nil) when no pipeline matches.
+func (d *DB) GetPipelineByRoutingKey(ctx context.Context, projectID, routingKey string) (*models.Pipeline, error) {
+	var p models.Pipeline
+	err := d.pool.QueryRow(ctx, `
+		SELECT id, user_id, project_id, encrypted_name, COALESCE(routing_key, ''), created_at
+		FROM pipelines WHERE project_id = $1 AND routing_key = $2`, projectID, routingKey,
+	).Scan(&p.ID, &p.UserID, &p.ProjectID, &p.EncryptedName, &p.RoutingKey, &p.CreatedAt)
+	if err == pgx.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("getting pipeline by routing key: %w", err)
 	}
 	return &p, nil
 }
@@ -350,7 +368,7 @@ func scanPipelines(rows pgx.Rows) ([]*models.Pipeline, error) {
 	var pipelines []*models.Pipeline
 	for rows.Next() {
 		var p models.Pipeline
-		if err := rows.Scan(&p.ID, &p.UserID, &p.ProjectID, &p.EncryptedName, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.UserID, &p.ProjectID, &p.EncryptedName, &p.RoutingKey, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		pipelines = append(pipelines, &p)

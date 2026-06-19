@@ -1,5 +1,24 @@
 # GitHub Actions integration
 
+## Token scope: pipeline-bound vs project-wide
+
+`pipepush tokens create` makes one of two kinds of token. After creation the CLI
+prints a setup snippet tailored to the scope you chose.
+
+- **Pipeline-bound** (`--project … --pipeline …`): every run from this token lands
+  in that one pipeline. The `pipeline` field in the request is informational
+  (shown in the notification). Best when one workflow ↔ one pipeline.
+- **Project-wide** (`--project …`, no `--pipeline`): a single token for the whole
+  repo. Each request is routed to a pipeline by its `pipeline` name — and the
+  pipeline is **auto-created** on first use. The `pipeline` field is therefore
+  **required**. Set it to `${{ github.workflow }}` and each workflow gets its own
+  pipeline automatically. Names are matched case-insensitively after trimming.
+
+  > Routing matches on a hash of the (normalized) pipeline name, not the
+  > encrypted name. The hash of a low-entropy name like "CI" is not secret, so a
+  > project-wide token trades a little pipeline-name privacy for one-token
+  > convenience. Use pipeline-bound tokens if that matters to you.
+
 ## 1. Add secrets/variables
 
 ```bash

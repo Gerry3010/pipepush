@@ -10,6 +10,7 @@ import (
 	"github.com/Gerry3010/pipepush/internal/db"
 	"github.com/Gerry3010/pipepush/internal/models"
 	"github.com/Gerry3010/pipepush/internal/push"
+	"github.com/Gerry3010/pipepush/internal/routing"
 )
 
 // validStatuses are the accepted pipeline statuses.
@@ -61,11 +62,46 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolve target pipeline: token-bound pipeline, else create/reuse default.
+	pubKey, err := crypto.PublicKeyFromBase64(publicKeyB64)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "user key error")
+		return
+	}
+
+	// Resolve target pipeline. A pipeline-scoped token routes to its bound
+	// pipeline. A project-scoped token routes by the plaintext pipeline name:
+	// match an existing pipeline via its routing key, else create one. Names
+	// stay E2E-encrypted; only their hash (the routing key) is used to match.
 	pipelineID := token.PipelineID
 	if pipelineID == "" {
-		writeError(w, http.StatusBadRequest, "this token is project-scoped; include a pipeline-scoped token or specify a pipeline")
-		return
+		if req.Pipeline == "" {
+			writeError(w, http.StatusBadRequest, "this token is project-scoped; the request must include a \"pipeline\" name")
+			return
+		}
+		rk := routing.Key(req.Pipeline)
+		pipe, err := h.db.GetPipelineByRoutingKey(r.Context(), token.ProjectID, rk)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not resolve pipeline")
+			return
+		}
+		if pipe == nil {
+			encName, encErr := crypto.Encrypt(pubKey, []byte(req.Pipeline))
+			if encErr != nil {
+				writeError(w, http.StatusInternalServerError, "encryption failed")
+				return
+			}
+			pipe, err = h.db.CreatePipeline(r.Context(), token.UserID, token.ProjectID, encName, rk)
+			if err != nil {
+				// A concurrent first-run for the same name may have created it
+				// (unique on project_id+routing_key). Re-resolve before failing.
+				pipe, _ = h.db.GetPipelineByRoutingKey(r.Context(), token.ProjectID, rk)
+				if pipe == nil {
+					writeError(w, http.StatusInternalServerError, "could not create pipeline")
+					return
+				}
+			}
+		}
+		pipelineID = pipe.ID
 	}
 
 	// Build the plaintext payload and ECIES-encrypt it for the user.
@@ -79,12 +115,6 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		Message:  req.Message,
 	}
 	plaintext, _ := json.Marshal(payload)
-
-	pubKey, err := crypto.PublicKeyFromBase64(publicKeyB64)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "user key error")
-		return
-	}
 
 	encPayload, err := crypto.Encrypt(pubKey, plaintext)
 	if err != nil {

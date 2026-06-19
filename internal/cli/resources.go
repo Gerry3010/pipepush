@@ -11,6 +11,7 @@ import (
 
 	"github.com/Gerry3010/pipepush/internal/crypto"
 	"github.com/Gerry3010/pipepush/internal/models"
+	"github.com/Gerry3010/pipepush/internal/routing"
 )
 
 // --- projects ---
@@ -139,7 +140,7 @@ func newPipelinesCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			p, err := s.API.CreatePipeline(context.Background(), projectID, encName)
+			p, err := s.API.CreatePipeline(context.Background(), projectID, encName, routing.Key(args[0]))
 			if err != nil {
 				return err
 			}
@@ -200,11 +201,12 @@ func newTokensCmd() *cobra.Command {
 			fmt.Printf("✓ Created token %q\n\n", args[0])
 			fmt.Printf("  %s\n\n", resp.PlaintextToken)
 			fmt.Println("⚠  Copy it now — it is shown only once and stored only as a hash.")
+			printTokenUsage(s.Cfg.ServerURL, pipelineID != "")
 			return nil
 		},
 	}
 	createCmd.Flags().String("project", "", "Project ID (required)")
-	createCmd.Flags().String("pipeline", "", "Pipeline ID (optional; required to receive runs)")
+	createCmd.Flags().String("pipeline", "", "Pipeline ID (optional; omit for a project-wide token that routes by pipeline name)")
 	cmd.AddCommand(createCmd)
 
 	listCmd := &cobra.Command{
@@ -306,6 +308,53 @@ func newRunsCmd() *cobra.Command {
 	cmd.AddCommand(listCmd)
 
 	return cmd
+}
+
+// printTokenUsage prints copy-paste CI setup for a freshly created token. The
+// guidance differs by token scope: a pipeline-bound token routes by itself
+// (the pipeline name is informational), while a project-scoped token routes —
+// and auto-creates — a pipeline by the "pipeline" name in each request.
+func printTokenUsage(serverURL string, pipelineScoped bool) {
+	server := serverURL
+	if server == "" {
+		server = "https://your-pipepush-server"
+	}
+
+	fmt.Println()
+	fmt.Println("── GitHub Actions setup ──────────────────────────────")
+	if pipelineScoped {
+		fmt.Println("Scope: pipeline-bound — runs go to this one pipeline.")
+		fmt.Println("       The \"pipeline\" field below is shown in notifications only.")
+	} else {
+		fmt.Println("Scope: project-wide — one token for every workflow in the repo.")
+		fmt.Println("       The \"pipeline\" field routes each run to a pipeline by name")
+		fmt.Println("       (created automatically on first use), so it is required.")
+	}
+	fmt.Println()
+	fmt.Println("1. Store the secret and server URL (run once):")
+	fmt.Println()
+	fmt.Println("   gh secret set PIPEPUSH_TOKEN          # paste the pp_… token above")
+	fmt.Printf("   gh variable set PIPEPUSH_SERVER --body %q\n", server)
+	fmt.Println()
+	fmt.Println("2. Add this step to your workflow job (notifies on success AND failure):")
+	fmt.Println()
+	fmt.Println("   - name: Notify pipepush")
+	fmt.Println("     if: always()")
+	fmt.Println("     run: |")
+	fmt.Println("       curl -sf -X POST \"$PIPEPUSH_SERVER/api/webhook\" \\")
+	fmt.Println("         -H \"Content-Type: application/json\" \\")
+	fmt.Println("         -d \"{\\\"token\\\":\\\"$PIPEPUSH_TOKEN\\\",\\\"status\\\":\\\"${{ job.status }}\\\",\\\"pipeline\\\":\\\"${{ github.workflow }}\\\",\\\"branch\\\":\\\"${{ github.ref_name }}\\\",\\\"commit\\\":\\\"${{ github.sha }}\\\",\\\"runId\\\":\\\"${{ github.run_number }}\\\"}\"")
+	fmt.Println("     env:")
+	fmt.Println("       PIPEPUSH_TOKEN: ${{ secrets.PIPEPUSH_TOKEN }}")
+	fmt.Println("       PIPEPUSH_SERVER: ${{ vars.PIPEPUSH_SERVER }}")
+	fmt.Println()
+	if pipelineScoped {
+		fmt.Println("Tip: for a project-wide token (one secret for all workflows), create a")
+		fmt.Println("     token without --pipeline.")
+	} else {
+		fmt.Println("Tip: ${{ github.workflow }} becomes the pipeline name — give each")
+		fmt.Println("     workflow a distinct name to keep runs in separate pipelines.")
+	}
 }
 
 func statusIcon(status string) string {

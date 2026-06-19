@@ -90,9 +90,9 @@ func createProjectCmd(api *client.Client, encName string) tea.Cmd {
 	}
 }
 
-func createPipelineCmd(api *client.Client, projectID, encName string) tea.Cmd {
+func createPipelineCmd(api *client.Client, projectID, encName, routingKey string) tea.Cmd {
 	return func() tea.Msg {
-		if _, err := api.CreatePipeline(context.Background(), projectID, encName); err != nil {
+		if _, err := api.CreatePipeline(context.Background(), projectID, encName, routingKey); err != nil {
 			return errMsg{err}
 		}
 		return actionDoneMsg{"pipeline created"}

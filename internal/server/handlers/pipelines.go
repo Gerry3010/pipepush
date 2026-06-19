@@ -45,7 +45,7 @@ func (h *PipelineHandler) Create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "project not found")
 		return
 	}
-	p, err := h.db.CreatePipeline(r.Context(), uid, projectID, req.EncryptedName)
+	p, err := h.db.CreatePipeline(r.Context(), uid, projectID, req.EncryptedName, req.RoutingKey)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not create pipeline")
 		return

@@ -8,6 +8,7 @@ import (
 
 	"github.com/Gerry3010/pipepush/internal/client"
 	"github.com/Gerry3010/pipepush/internal/crypto"
+	"github.com/Gerry3010/pipepush/internal/routing"
 )
 
 // --- Login screen ---
@@ -239,7 +240,7 @@ func (m model) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case inputNewProject:
 			return m, createProjectCmd(m.api, encName)
 		case inputNewPipeline:
-			return m, createPipelineCmd(m.api, m.curProjectID, encName)
+			return m, createPipelineCmd(m.api, m.curProjectID, encName, routing.Key(name))
 		case inputNewToken:
 			// Token is bound to the current pipeline if we have one in context.
 			return m, createTokenCmd(m.api, encName, m.curProjectID, m.curPipelineID)
