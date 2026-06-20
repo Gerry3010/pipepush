@@ -1,6 +1,9 @@
 # --- Stage 1: build the web app ---
 FROM node:22-alpine AS web
 WORKDIR /web
+# rsvg-convert rasterizes the icon SVG into web/public/ via the npm "prebuild"
+# hook (icons are gitignored build artifacts, generated fresh here).
+RUN apk add --no-cache rsvg-convert
 COPY web/package.json web/package-lock.json* ./
 RUN npm install
 COPY web/ ./

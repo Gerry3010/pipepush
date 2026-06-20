@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  pipepush app icon — single source of truth.
+  All raster icons (web/public/icon-*.png, apple-touch-icon.png, favicon.svg)
+  are generated from this file at build time via web/scripts/gen-icons.sh and
+  are NOT committed (see .gitignore). Edit here, then `npm run build`.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="pipepush">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8E6CF7"/>
+      <stop offset="1" stop-color="#6A41E0"/>
+    </linearGradient>
+  </defs>
+  <!-- Squircle background (full-bleed → safe for maskable icons) -->
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
+  <!-- Lightning bolt -->
+  <path d="M312 96 L184 304 L262 304 L200 416 L328 240 L250 240 Z"
+        fill="#ffffff"/>
+</svg>

@@ -94,3 +94,7 @@ touching anything encryption-related. Key points:
 - The CLI caches the decrypted private key in `~/.config/pipepush/config.json` (0600); the browser keeps
   it in memory only. Losing the password makes historical encrypted runs unrecoverable.
 - Targets Go 1.26.
+- App icons are rasterized from `web/assets/icon.svg` (single source of truth) into `web/public/`
+  by the npm `prebuild` hook (`web/scripts/gen-icons.sh`, needs `rsvg-convert`/librsvg). The PNGs +
+  `favicon.svg` are gitignored build artifacts — edit the SVG, never the PNGs. The Docker web stage
+  installs `rsvg-convert` so the hook runs there too.

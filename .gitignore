@@ -12,6 +12,12 @@ web/node_modules/
 web/dist/
 web/*.tsbuildinfo
 
+# Generated icons — rasterized from web/assets/icon.svg by web/scripts/gen-icons.sh
+web/public/icon-192.png
+web/public/icon-512.png
+web/public/apple-touch-icon.png
+web/public/favicon.svg
+
 # Go
 *.test
 *.out

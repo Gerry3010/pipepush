@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "icons": "sh scripts/gen-icons.sh",
+    "prebuild": "sh scripts/gen-icons.sh",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
