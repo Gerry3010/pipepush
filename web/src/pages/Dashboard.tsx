@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { decrypt } from "../crypto/session";
-import { enablePush } from "../push";
+import { enablePush, disablePush, isPushEnabled, pushSupported } from "../push";
 
 interface RecentRun {
   project: string;
@@ -22,7 +22,13 @@ const statusGlyph: Record<string, string> = {
 export function Dashboard() {
   const [recent, setRecent] = useState<RecentRun[]>([]);
   const [pushMsg, setPushMsg] = useState<string | null>(null);
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    isPushEnabled().then(setPushOn);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -60,12 +66,22 @@ export function Dashboard() {
     })();
   }, []);
 
-  async function turnOnPush() {
+  async function togglePush() {
+    setPushBusy(true);
     try {
-      await enablePush();
-      setPushMsg("✓ Push notifications enabled on this device");
+      if (pushOn) {
+        await disablePush();
+        setPushOn(false);
+        setPushMsg("Push notifications disabled on this device");
+      } else {
+        await enablePush();
+        setPushOn(true);
+        setPushMsg("✓ Push notifications enabled on this device");
+      }
     } catch (e) {
       setPushMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPushBusy(false);
     }
   }
 
@@ -73,9 +89,19 @@ export function Dashboard() {
     <div>
       <div className="dash-head">
         <h1>Dashboard</h1>
-        <button className="primary" onClick={turnOnPush}>
-          🔔 Enable push notifications
-        </button>
+        {pushSupported() && (
+          <button
+            className={pushOn ? "secondary" : "primary"}
+            onClick={togglePush}
+            disabled={pushBusy}
+          >
+            {pushBusy
+              ? "…"
+              : pushOn
+                ? "🔕 Disable push notifications"
+                : "🔔 Enable push notifications"}
+          </button>
+        )}
       </div>
       {pushMsg && <p className="muted">{pushMsg}</p>}
 

@@ -121,4 +121,6 @@ export const api = {
     authKey: string;
     deviceName: string;
   }) => req<void>("POST", "/push/subscribe", b),
+  unsubscribePush: (b: { endpoint: string }) =>
+    req<void>("DELETE", "/push/subscribe", b),
 };

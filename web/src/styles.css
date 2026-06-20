@@ -134,8 +134,18 @@ button.primary {
   margin-top: 0.75rem;
 }
 
-button.primary:disabled {
+button.primary:disabled,
+button.secondary:disabled {
   opacity: 0.6;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  margin-top: 0.75rem;
 }
 
 .link-btn {
