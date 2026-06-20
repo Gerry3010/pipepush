@@ -24,6 +24,72 @@ export function pushSupported(): boolean {
   return "serviceWorker" in navigator && "PushManager" in window;
 }
 
+export type BrowserKind =
+  | "brave"
+  | "chrome"
+  | "edge"
+  | "firefox"
+  | "safari"
+  | "other";
+
+// detectBrowser identifies the engine, using Brave's async isBrave() probe
+// (Brave masks itself as Chrome in the user-agent) and falling back to UA hints.
+export async function detectBrowser(): Promise<BrowserKind> {
+  const nav = navigator as Navigator & {
+    brave?: { isBrave?: () => Promise<boolean> };
+  };
+  if (nav.brave?.isBrave) {
+    try {
+      if (await nav.brave.isBrave()) return "brave";
+    } catch {
+      /* fall through to UA sniffing */
+    }
+  }
+  const ua = navigator.userAgent;
+  if (/Edg\//.test(ua)) return "edge";
+  if (/Firefox\//.test(ua)) return "firefox";
+  if (/Chrome\//.test(ua)) return "chrome";
+  if (/Safari\//.test(ua)) return "safari";
+  return "other";
+}
+
+// pushServiceHint maps a failed subscribe() to actionable guidance. The common
+// "Registration failed - push service error" means the browser couldn't check
+// in with its push service (FCM for Chromium engines) — usually a per-browser
+// setting (Brave) or a blocked network, not something the app can fix.
+function pushServiceHint(browser: BrowserKind): string {
+  switch (browser) {
+    case "brave":
+      return 'Brave blocks Google\'s push service by default. Enable it at brave://settings/privacy → "Use Google services for push messaging", then fully restart Brave and try again.';
+    case "chrome":
+    case "edge":
+      return "Your browser couldn't register with its push service. Check chrome://gcm-internals (Connection State) and make sure a VPN/firewall isn't blocking Google's push servers (mtalk.google.com).";
+    default:
+      return "Your browser couldn't register with its push service. It may have push messaging disabled or be unable to reach it.";
+  }
+}
+
+// subscribeWithHint wraps pushManager.subscribe and, on the push-service
+// registration failure, rethrows a browser-specific, actionable message.
+async function subscribeWithHint(
+  reg: ServiceWorkerRegistration,
+  appServerKey: ArrayBuffer,
+): Promise<PushSubscription> {
+  try {
+    return await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: appServerKey,
+    });
+  } catch (e) {
+    const name = e instanceof Error ? e.name : "";
+    const msg = e instanceof Error ? e.message : String(e);
+    if (name === "AbortError" || /push service|Registration failed/i.test(msg)) {
+      throw new Error(pushServiceHint(await detectBrowser()));
+    }
+    throw e;
+  }
+}
+
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator)) return null;
   return navigator.serviceWorker.register("/sw.js", { type: "module" });
@@ -64,10 +130,7 @@ export async function enablePush(): Promise<void> {
     await existing.unsubscribe();
   }
 
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: appServerKey,
-  });
+  const sub = await subscribeWithHint(reg, appServerKey);
   await syncSubscription(sub);
 }
 
