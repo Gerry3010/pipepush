@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Gerry3010/pipepush/internal/crypto"
 	"github.com/Gerry3010/pipepush/internal/models"
 	"github.com/Gerry3010/pipepush/internal/routing"
+	"github.com/Gerry3010/pipepush/internal/session"
 )
 
 // --- projects ---
@@ -34,7 +34,7 @@ func newProjectsCmd() *cobra.Command {
 			tw := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
 			fmt.Fprintln(tw, "ID\tNAME\tCREATED")
 			for _, p := range projects {
-				fmt.Fprintf(tw, "%s\t%s\t%s\n", p.ID, s.decrypt(p.EncryptedName), p.CreatedAt.Format("2006-01-02"))
+				fmt.Fprintf(tw, "%s\t%s\t%s\n", p.ID, s.Decrypt(p.EncryptedName), p.CreatedAt.Format("2006-01-02"))
 			}
 			return tw.Flush()
 		},
@@ -50,13 +50,13 @@ func newProjectsCmd() *cobra.Command {
 				return err
 			}
 			desc, _ := cmd.Flags().GetString("description")
-			encName, err := s.encrypt(args[0])
+			encName, err := s.Encrypt(args[0])
 			if err != nil {
 				return err
 			}
 			var encDesc string
 			if desc != "" {
-				if encDesc, err = s.encrypt(desc); err != nil {
+				if encDesc, err = s.Encrypt(desc); err != nil {
 					return err
 				}
 			}
@@ -115,7 +115,7 @@ func newPipelinesCmd() *cobra.Command {
 			tw := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
 			fmt.Fprintln(tw, "ID\tNAME\tCREATED")
 			for _, p := range pipelines {
-				fmt.Fprintf(tw, "%s\t%s\t%s\n", p.ID, s.decrypt(p.EncryptedName), p.CreatedAt.Format("2006-01-02"))
+				fmt.Fprintf(tw, "%s\t%s\t%s\n", p.ID, s.Decrypt(p.EncryptedName), p.CreatedAt.Format("2006-01-02"))
 			}
 			return tw.Flush()
 		},
@@ -136,7 +136,7 @@ func newPipelinesCmd() *cobra.Command {
 			if projectID == "" {
 				return fmt.Errorf("--project is required")
 			}
-			encName, err := s.encrypt(args[0])
+			encName, err := s.Encrypt(args[0])
 			if err != nil {
 				return err
 			}
@@ -190,7 +190,7 @@ func newTokensCmd() *cobra.Command {
 			if projectID == "" {
 				return fmt.Errorf("--project is required")
 			}
-			encName, err := s.encrypt(args[0])
+			encName, err := s.Encrypt(args[0])
 			if err != nil {
 				return err
 			}
@@ -201,7 +201,7 @@ func newTokensCmd() *cobra.Command {
 			fmt.Printf("✓ Created token %q\n\n", args[0])
 			fmt.Printf("  %s\n\n", resp.PlaintextToken)
 			fmt.Println("⚠  Copy it now — it is shown only once and stored only as a hash.")
-			printTokenUsage(s.Cfg.ServerURL, pipelineID != "")
+			fmt.Print(session.TokenUsage(s.Cfg.ServerURL, pipelineID != ""))
 			return nil
 		},
 	}
@@ -236,7 +236,7 @@ func newTokensCmd() *cobra.Command {
 				if pipe == "" {
 					pipe = "(project)"
 				}
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%t\t%s\n", t.ID, s.decrypt(t.EncryptedName), pipe, t.Active, lastUsed)
+				fmt.Fprintf(tw, "%s\t%s\t%s\t%t\t%s\n", t.ID, s.Decrypt(t.EncryptedName), pipe, t.Active, lastUsed)
 			}
 			return tw.Flush()
 		},
@@ -290,7 +290,7 @@ func newRunsCmd() *cobra.Command {
 			fmt.Fprintln(tw, "STATUS\tBRANCH\tCOMMIT\tMESSAGE\tRECEIVED")
 			for _, r := range runs {
 				var p models.RunPayload
-				if plain, derr := crypto.DecryptString(s.priv, r.EncryptedPayload); derr == nil {
+				if plain, derr := s.DecryptPayload(r.EncryptedPayload); derr == nil {
 					_ = json.Unmarshal([]byte(plain), &p)
 				}
 				commit := p.Commit
@@ -308,53 +308,6 @@ func newRunsCmd() *cobra.Command {
 	cmd.AddCommand(listCmd)
 
 	return cmd
-}
-
-// printTokenUsage prints copy-paste CI setup for a freshly created token. The
-// guidance differs by token scope: a pipeline-bound token routes by itself
-// (the pipeline name is informational), while a project-scoped token routes —
-// and auto-creates — a pipeline by the "pipeline" name in each request.
-func printTokenUsage(serverURL string, pipelineScoped bool) {
-	server := serverURL
-	if server == "" {
-		server = "https://your-pipepush-server"
-	}
-
-	fmt.Println()
-	fmt.Println("── GitHub Actions setup ──────────────────────────────")
-	if pipelineScoped {
-		fmt.Println("Scope: pipeline-bound — runs go to this one pipeline.")
-		fmt.Println("       The \"pipeline\" field below is shown in notifications only.")
-	} else {
-		fmt.Println("Scope: project-wide — one token for every workflow in the repo.")
-		fmt.Println("       The \"pipeline\" field routes each run to a pipeline by name")
-		fmt.Println("       (created automatically on first use), so it is required.")
-	}
-	fmt.Println()
-	fmt.Println("1. Store the secret and server URL (run once):")
-	fmt.Println()
-	fmt.Println("   gh secret set PIPEPUSH_TOKEN          # paste the pp_… token above")
-	fmt.Printf("   gh variable set PIPEPUSH_SERVER --body %q\n", server)
-	fmt.Println()
-	fmt.Println("2. Add this step to your workflow job (notifies on success AND failure):")
-	fmt.Println()
-	fmt.Println("   - name: Notify pipepush")
-	fmt.Println("     if: always()")
-	fmt.Println("     run: |")
-	fmt.Println("       curl -sf -X POST \"$PIPEPUSH_SERVER/api/webhook\" \\")
-	fmt.Println("         -H \"Content-Type: application/json\" \\")
-	fmt.Println("         -d \"{\\\"token\\\":\\\"$PIPEPUSH_TOKEN\\\",\\\"status\\\":\\\"${{ job.status }}\\\",\\\"pipeline\\\":\\\"${{ github.workflow }}\\\",\\\"branch\\\":\\\"${{ github.ref_name }}\\\",\\\"commit\\\":\\\"${{ github.sha }}\\\",\\\"runId\\\":\\\"${{ github.run_number }}\\\"}\"")
-	fmt.Println("     env:")
-	fmt.Println("       PIPEPUSH_TOKEN: ${{ secrets.PIPEPUSH_TOKEN }}")
-	fmt.Println("       PIPEPUSH_SERVER: ${{ vars.PIPEPUSH_SERVER }}")
-	fmt.Println()
-	if pipelineScoped {
-		fmt.Println("Tip: for a project-wide token (one secret for all workflows), create a")
-		fmt.Println("     token without --pipeline.")
-	} else {
-		fmt.Println("Tip: ${{ github.workflow }} becomes the pipeline name — give each")
-		fmt.Println("     workflow a distinct name to keep runs in separate pipelines.")
-	}
 }
 
 func statusIcon(status string) string {
