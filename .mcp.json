@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "pipepush": {
+      "command": "pipepush-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}
