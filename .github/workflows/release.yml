@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
-      - name: Build CLI
+      - name: Build CLI + MCP server
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -32,9 +32,13 @@ jobs:
           VERSION=${GITHUB_REF_NAME}
           go build -ldflags "-s -w -X main.version=$VERSION" \
             -o pipepush-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/pipepush
+          go build -ldflags "-s -w -X main.version=$VERSION" \
+            -o pipepush-mcp-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/pipepush-mcp
       - uses: softprops/action-gh-release@v2
         with:
-          files: pipepush-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+          files: |
+            pipepush-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+            pipepush-mcp-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
 
   image:
     runs-on: ubuntu-latest

@@ -108,6 +108,22 @@ Once `pipepush whoami` succeeds:
    ```
    (Set `PIPEPUSH_TOKEN` and `PIPEPUSH_SERVER` as Secured repository variables.)
 
+   **Codemagic** (Flutter/iOS/Android) — no per-step status var exists in the
+   build steps, so notify from `publishing:` `scripts:` (they run regardless of
+   outcome) using `$CM_BUILD_STEP_STATUS`. Add `PIPEPUSH_TOKEN` (Secure) +
+   `PIPEPUSH_SERVER` as env vars, then to each workflow:
+   ```yaml
+   publishing:
+     scripts:
+       - name: Notify pipepush
+         script: |
+           if [ "$CM_BUILD_STEP_STATUS" = "success" ]; then STATUS=success; else STATUS=failure; fi
+           curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" \
+             -H "Content-Type: application/json" \
+             -d "{\"token\":\"$PIPEPUSH_TOKEN\",\"status\":\"$STATUS\",\"pipeline\":\"$CM_WORKFLOW_ID\",\"branch\":\"${CM_BRANCH:-$CM_TAG}\",\"commit\":\"$CM_COMMIT\",\"runId\":\"$BUILD_NUMBER\"}"
+   ```
+   (Full notes in `docs/CODEMAGIC.md`. Codemagic = Apple/Flutter CI — verify on a real build.)
+
    **Other providers** — the contract is just `POST $PIPEPUSH_SERVER/api/webhook`
    with JSON `{ token, status, pipeline?, branch?, commit?, runId?, duration?, message? }`.
    `status` accepts CI-native values (`passed`, `failed`, `aborted`, …) — they're

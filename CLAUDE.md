@@ -21,6 +21,7 @@ go test ./...                   # unit tests incl. crypto
 go test ./internal/crypto -run TestName   # single test
 go run ./cmd/pipepush-server    # run server (migrations run automatically on boot)
 go run ./cmd/pipepush           # run CLI/TUI
+go install ./cmd/pipepush-mcp   # MCP server (stdio); register via .mcp.json below
 pipepush-server -gen-vapid-keys # generate Web Push VAPID key pair for .env
 ```
 
@@ -58,9 +59,13 @@ Full stack via Docker: `cp .env.example .env`, fill in secrets, `docker compose 
 `docs/ARCHITECTURE.md` is the authoritative reference for the crypto and threat model — read it before
 touching anything encryption-related. Key points:
 
-- **Two binaries, one module.** `cmd/pipepush-server` (chi HTTP server, all routes wired in
-  `internal/server/router.go`) and `cmd/pipepush` (Cobra CLI + Bubble Tea TUI under `internal/tui`,
-  `internal/cli`).
+- **Three binaries, one module.** `cmd/pipepush-server` (chi HTTP server, all routes wired in
+  `internal/server/router.go`), `cmd/pipepush` (Cobra CLI + Bubble Tea TUI under `internal/tui`,
+  `internal/cli`), and `cmd/pipepush-mcp` (stdio MCP server exposing `pipepush_*` tools to Claude
+  Code, registered via the repo-root `.mcp.json`). The CLI and MCP server share the E2E
+  encrypt/decrypt + auth layer in `internal/session` (config/JWT/keys from
+  `~/.config/pipepush/config.json`, written by `pipepush login`), so both encrypt names/payloads
+  identically. The MCP server never prompts — the one-time `pipepush login` is the only TTY step.
 - **E2E encryption (`internal/crypto`, mirrored in `web/src/crypto`).** Every user has an X25519 key
   pair generated client-side. The private key is wrapped with AES-256-GCM under an Argon2id-derived key
   and stored as an opaque blob the server can't unwrap. Run payloads are encrypted *to the user's public

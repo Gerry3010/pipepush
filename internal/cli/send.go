@@ -10,25 +10,8 @@ import (
 	"github.com/Gerry3010/pipepush/internal/client"
 	"github.com/Gerry3010/pipepush/internal/config"
 	"github.com/Gerry3010/pipepush/internal/models"
+	"github.com/Gerry3010/pipepush/internal/session"
 )
-
-// normalizeStatus maps common CI status strings to pipepush statuses.
-func normalizeStatus(s string) string {
-	switch s {
-	case "success", "passed", "ok", "succeeded":
-		return "success"
-	case "failure", "failed", "error", "broken":
-		return "failure"
-	case "cancelled", "canceled", "aborted":
-		return "cancelled"
-	case "running", "started", "in_progress", "pending":
-		return "running"
-	case "skipped":
-		return "skipped"
-	default:
-		return s
-	}
-}
 
 func newSendCmd() *cobra.Command {
 	var token, status, serverFlag, pipeline, runID, commit, branch, duration, message string
@@ -71,7 +54,7 @@ Status is normalized, so CI-native values like "passed"/"failed" work directly
 			api := client.New(serverURL, "")
 			err := api.Send(context.Background(), models.WebhookRequest{
 				Token:    token,
-				Status:   normalizeStatus(status),
+				Status:   session.NormalizeStatus(status),
 				Pipeline: pipeline,
 				RunID:    runID,
 				Commit:   commit,
@@ -82,7 +65,7 @@ Status is normalized, so CI-native values like "passed"/"failed" work directly
 			if err != nil {
 				return err
 			}
-			fmt.Printf("✓ Sent %s notification\n", normalizeStatus(status))
+			fmt.Printf("✓ Sent %s notification\n", session.NormalizeStatus(status))
 			return nil
 		},
 	}
