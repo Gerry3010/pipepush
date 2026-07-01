@@ -4,6 +4,7 @@ import { api, Pipeline, NotificationToken, Run } from "../api/client";
 import { decrypt, encrypt } from "../crypto/session";
 import { routingKey } from "../crypto/routing";
 import { TokenSetupModal } from "../components/TokenSetupModal";
+import { useAutoRefresh } from "../useAutoRefresh";
 
 interface RunPayload {
   status: string;
@@ -35,9 +36,11 @@ export function ProjectDetail() {
     null,
   );
   const [err, setErr] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
     if (!id) return;
+    setRefreshing(true);
     try {
       const ps = await api.listPipelines(id);
       setPipelines(ps);
@@ -49,6 +52,8 @@ export function ProjectDetail() {
       setRuns(runMap);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRefreshing(false);
     }
   }
 
@@ -56,6 +61,9 @@ export function ProjectDetail() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Auto-refresh on a timer, on incoming Web Push, and on tab re-focus.
+  useAutoRefresh(load);
 
   async function createPipeline(e: React.FormEvent) {
     e.preventDefault();
@@ -85,7 +93,17 @@ export function ProjectDetail() {
 
   return (
     <div>
-      <h1>Project</h1>
+      <div className="dash-head">
+        <h1>Project</h1>
+        <button
+          className="secondary"
+          onClick={load}
+          disabled={refreshing}
+          title="Refresh runs"
+        >
+          {refreshing ? "↻ …" : "↻ Refresh"}
+        </button>
+      </div>
       {err && <p className="error">{err}</p>}
 
       <section>

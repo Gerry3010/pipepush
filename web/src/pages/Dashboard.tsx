@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { decrypt } from "../crypto/session";
 import { enablePush, disablePush, isPushEnabled, pushSupported } from "../push";
+import { useAutoRefresh } from "../useAutoRefresh";
 
 interface RecentRun {
   project: string;
@@ -25,46 +26,54 @@ export function Dashboard() {
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     isPushEnabled().then(setPushOn);
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      const out: RecentRun[] = [];
-      try {
-        const projects = await api.listProjects();
-        for (const p of projects) {
-          const projName = decrypt(p.encryptedName);
-          const pipelines = await api.listPipelines(p.id);
-          for (const pipe of pipelines) {
-            const pipeName = decrypt(pipe.encryptedName);
-            const runs = await api.listRuns(pipe.id, 5);
-            for (const r of runs) {
-              let branch: string | undefined;
-              try {
-                branch = JSON.parse(decrypt(r.encryptedPayload)).branch;
-              } catch {
-                /* ignore */
-              }
-              out.push({
-                project: projName,
-                pipeline: pipeName,
-                status: r.status,
-                branch,
-                when: r.receivedAt,
-              });
+  const load = useCallback(async () => {
+    setRefreshing(true);
+    const out: RecentRun[] = [];
+    try {
+      const projects = await api.listProjects();
+      for (const p of projects) {
+        const projName = decrypt(p.encryptedName);
+        const pipelines = await api.listPipelines(p.id);
+        for (const pipe of pipelines) {
+          const pipeName = decrypt(pipe.encryptedName);
+          const runs = await api.listRuns(pipe.id, 5);
+          for (const r of runs) {
+            let branch: string | undefined;
+            try {
+              branch = JSON.parse(decrypt(r.encryptedPayload)).branch;
+            } catch {
+              /* ignore */
             }
+            out.push({
+              project: projName,
+              pipeline: pipeName,
+              status: r.status,
+              branch,
+              when: r.receivedAt,
+            });
           }
         }
-      } finally {
-        out.sort((a, b) => b.when.localeCompare(a.when));
-        setRecent(out.slice(0, 20));
-        setLoading(false);
       }
-    })();
+    } finally {
+      out.sort((a, b) => b.when.localeCompare(a.when));
+      setRecent(out.slice(0, 20));
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Auto-refresh on a timer, on incoming Web Push, and on tab re-focus.
+  useAutoRefresh(load);
 
   async function togglePush() {
     setPushBusy(true);
@@ -89,6 +98,14 @@ export function Dashboard() {
     <div>
       <div className="dash-head">
         <h1>Dashboard</h1>
+        <button
+          className="secondary"
+          onClick={load}
+          disabled={refreshing}
+          title="Refresh runs"
+        >
+          {refreshing ? "↻ …" : "↻ Refresh"}
+        </button>
         {pushSupported() && (
           <button
             className={pushOn ? "secondary" : "primary"}
