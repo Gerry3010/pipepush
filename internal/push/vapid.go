@@ -38,8 +38,13 @@ func (d *Dispatcher) Enabled() bool {
 // Only the encrypted blob and a run id travel through the push service —
 // the actual run details are inside encryptedPayload (E2E).
 type pushPayload struct {
-	Type             string `json:"type"`
-	RunID            string `json:"runId"`
+	Type  string `json:"type"`
+	RunID string `json:"runId"`
+	// PipelineID is a non-sensitive UUID (not a name). The service worker uses it
+	// to look up the locally-cached, client-decrypted pipeline/project name so the
+	// notification can show it — the plaintext name never travels through the push
+	// service, preserving E2E.
+	PipelineID       string `json:"pipelineId"`
 	Status           string `json:"status"`
 	EncryptedPayload string `json:"encryptedPayload"`
 }
@@ -59,6 +64,7 @@ func (d *Dispatcher) SendRunNotification(ctx context.Context, userID string, run
 	payload, _ := json.Marshal(pushPayload{
 		Type:             "run_update",
 		RunID:            run.ID,
+		PipelineID:       run.PipelineID,
 		Status:           run.Status,
 		EncryptedPayload: run.EncryptedPayload,
 	})

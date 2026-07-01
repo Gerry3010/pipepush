@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { decrypt } from "../crypto/session";
 import { enablePush, disablePush, isPushEnabled, pushSupported } from "../push";
 import { useAutoRefresh } from "../useAutoRefresh";
+import { cachePipelineNames } from "../nameCache";
 
 interface RecentRun {
   project: string;
@@ -35,6 +36,7 @@ export function Dashboard() {
   const load = useCallback(async () => {
     setRefreshing(true);
     const out: RecentRun[] = [];
+    const nameEntries: { id: string; label: string }[] = [];
     try {
       const projects = await api.listProjects();
       for (const p of projects) {
@@ -42,6 +44,7 @@ export function Dashboard() {
         const pipelines = await api.listPipelines(p.id);
         for (const pipe of pipelines) {
           const pipeName = decrypt(pipe.encryptedName);
+          nameEntries.push({ id: pipe.id, label: `${projName} · ${pipeName}` });
           const runs = await api.listRuns(pipe.id, 5);
           for (const r of runs) {
             let branch: string | undefined;
@@ -65,6 +68,8 @@ export function Dashboard() {
       setRecent(out.slice(0, 20));
       setLoading(false);
       setRefreshing(false);
+      // Cache decrypted names so the service worker can label push notifications.
+      void cachePipelineNames(nameEntries);
     }
   }, []);
 
