@@ -58,3 +58,17 @@ jobs:
         run: npm run build
       - name: Crypto interop (Go <-> browser)
         run: PIPEPUSH_INTEROP=1 go test ./internal/crypto -run Interop -v
+
+  notify:
+    needs: [go, web]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify pipepush
+        run: |
+          curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" \
+            -H "Content-Type: application/json" \
+            -d "{\"token\":\"$PIPEPUSH_TOKEN\",\"status\":\"${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failure' || 'success' }}\",\"pipeline\":\"$GITHUB_WORKFLOW\",\"branch\":\"$GITHUB_REF_NAME\",\"commit\":\"$GITHUB_SHA\",\"runId\":\"$GITHUB_RUN_NUMBER\"}"
+        env:
+          PIPEPUSH_TOKEN: ${{ secrets.PIPEPUSH_TOKEN }}
+          PIPEPUSH_SERVER: ${{ vars.PIPEPUSH_SERVER }}
