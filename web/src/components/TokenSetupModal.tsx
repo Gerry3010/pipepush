@@ -146,7 +146,7 @@ export function TokenSetupModal({ token, serverUrl, pipelineBound, onClose }: Pr
         </div>
 
         <div className="snippet-wrap">
-          <button className="copy-snippet link-btn" onClick={() => copy(snippet, "snippet")}>
+          <button className="copy-snippet" onClick={() => copy(snippet, "snippet")}>
             {copied === "snippet" ? "copied ✓" : "copy"}
           </button>
           <pre className="snippet">{snippet}</pre>

@@ -37,6 +37,17 @@ export function isUnlocked(): boolean {
   return state.privateKey !== null;
 }
 
+// getPrivateKey / getPublicKey expose the in-memory key material for local
+// biometric enrollment (wrapping it behind a platform authenticator). The
+// private key still never touches disk in the clear.
+export function getPrivateKey(): Uint8Array | null {
+  return state.privateKey;
+}
+
+export function getPublicKey(): string | null {
+  return state.publicKeyB64 ?? localStorage.getItem("pp_pub");
+}
+
 export function getEmail(): string | null {
   return state.email ?? localStorage.getItem("pp_email");
 }

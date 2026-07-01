@@ -4,6 +4,7 @@ import { api, Pipeline, NotificationToken, Run } from "../api/client";
 import { decrypt, encrypt } from "../crypto/session";
 import { routingKey } from "../crypto/routing";
 import { TokenSetupModal } from "../components/TokenSetupModal";
+import { RunFeed, RunItem } from "../components/RunFeed";
 import { useAutoRefresh } from "../useAutoRefresh";
 
 interface RunPayload {
@@ -15,14 +16,6 @@ interface RunPayload {
   duration?: string;
   message?: string;
 }
-
-const statusGlyph: Record<string, string> = {
-  success: "✓",
-  failure: "✗",
-  cancelled: "⊘",
-  running: "●",
-  skipped: "○",
-};
 
 export function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -83,25 +76,41 @@ export function ProjectDetail() {
     load();
   }
 
-  function decodeRun(r: Run): RunPayload {
-    try {
-      return JSON.parse(decrypt(r.encryptedPayload));
-    } catch {
-      return { status: r.status };
-    }
+  function runItems(list: Run[]): RunItem[] {
+    return list.map((r) => {
+      let d: RunPayload = { status: r.status };
+      try {
+        d = JSON.parse(decrypt(r.encryptedPayload));
+      } catch {
+        /* ignore */
+      }
+      return {
+        key: r.id,
+        status: r.status,
+        pipeline: d.branch || "run",
+        commit: d.commit,
+        message: d.message,
+        when: r.receivedAt,
+        live: r.status === "running",
+      };
+    });
   }
 
   return (
     <div>
-      <div className="dash-head">
-        <h1>Project</h1>
+      <div className="page-head">
+        <div>
+          <div className="eyebrow">Project</div>
+          <h1>Pipelines &amp; tokens</h1>
+        </div>
         <button
-          className="secondary"
+          className="btn-icon"
           onClick={load}
           disabled={refreshing}
-          title="Refresh runs"
+          title="Refresh"
+          aria-label="Refresh runs"
         >
-          {refreshing ? "↻ …" : "↻ Refresh"}
+          {refreshing ? "…" : "↻"}
         </button>
       </div>
       {err && <p className="error">{err}</p>}
@@ -109,63 +118,52 @@ export function ProjectDetail() {
       <section>
         <h2>Pipelines</h2>
         <form onSubmit={createPipeline} className="inline-form">
-          <input
-            placeholder="New pipeline name"
-            value={newPipeline}
-            onChange={(e) => setNewPipeline(e.target.value)}
-          />
-          <button className="primary">Add</button>
-        </form>
-        {pipelines.map((p) => (
-          <div key={p.id} className="card">
-            <h3>{decrypt(p.encryptedName)}</h3>
-            <table className="runs">
-              <tbody>
-                {(runs[p.id] ?? []).map((r) => {
-                  const d = decodeRun(r);
-                  return (
-                    <tr key={r.id} className={`run run-${r.status}`}>
-                      <td className="glyph">{statusGlyph[r.status] ?? "•"}</td>
-                      <td>{r.status}</td>
-                      <td>{d.branch}</td>
-                      <td className="mono">{d.commit?.slice(0, 8)}</td>
-                      <td>{d.message}</td>
-                      <td className="date">
-                        {new Date(r.receivedAt).toLocaleString()}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {(runs[p.id] ?? []).length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="muted">
-                      No runs yet
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div className="row">
+            <input
+              placeholder="New pipeline name"
+              value={newPipeline}
+              onChange={(e) => setNewPipeline(e.target.value)}
+            />
           </div>
-        ))}
+          <button className="btn btn-primary">Add</button>
+        </form>
+        {pipelines.length === 0 && <div className="empty">No pipelines yet.</div>}
+        {pipelines.map((p) => {
+          const items = runItems(runs[p.id] ?? []);
+          return (
+            <div key={p.id} className="card">
+              <h3>{decrypt(p.encryptedName)}</h3>
+              {items.length > 0 ? (
+                <RunFeed items={items} />
+              ) : (
+                <p className="muted" style={{ margin: "0.5rem 0 0" }}>
+                  No runs yet
+                </p>
+              )}
+            </div>
+          );
+        })}
       </section>
 
       <section>
-        <h2>Notification Tokens</h2>
+        <h2>Notification tokens</h2>
         <form onSubmit={createToken} className="inline-form">
-          <input
-            placeholder="Token name (e.g. GitHub Actions)"
-            value={newToken}
-            onChange={(e) => setNewToken(e.target.value)}
-          />
-          <select value={tokenPipeline} onChange={(e) => setTokenPipeline(e.target.value)}>
-            <option value="">— bind to pipeline —</option>
-            {pipelines.map((p) => (
-              <option key={p.id} value={p.id}>
-                {decrypt(p.encryptedName)}
-              </option>
-            ))}
-          </select>
-          <button className="primary">Create token</button>
+          <div className="row">
+            <input
+              placeholder="Token name (e.g. GitHub Actions)"
+              value={newToken}
+              onChange={(e) => setNewToken(e.target.value)}
+            />
+            <select value={tokenPipeline} onChange={(e) => setTokenPipeline(e.target.value)}>
+              <option value="">— bind to pipeline —</option>
+              {pipelines.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {decrypt(p.encryptedName)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button className="btn btn-primary">Create token</button>
         </form>
 
         {createdToken && (
@@ -180,7 +178,7 @@ export function ProjectDetail() {
         <ul className="token-list">
           {tokens.map((t) => (
             <li key={t.id} className={t.active ? "" : "revoked"}>
-              <span>
+              <span className="tok-name">
                 {t.active ? "●" : "○"} {decrypt(t.encryptedName)}
               </span>
               {t.active ? (

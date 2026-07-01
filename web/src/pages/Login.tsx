@@ -1,16 +1,43 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, setJWT } from "../api/client";
+import { api, setJWT, getJWT } from "../api/client";
 import { generateKeypair, wrapPrivateKey, unwrapPrivateKey } from "../crypto/ecies";
-import { setSession } from "../crypto/session";
+import { setSession, getEmail } from "../crypto/session";
+import {
+  biometricSupported,
+  hasBiometricUnlock,
+  unlockWithBiometric,
+  biometricEmail,
+} from "../crypto/biometric";
 
 export function Login({ onAuth }: { onAuth: () => void }) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(getEmail() ?? "");
   const [password, setPassword] = useState("");
   const [register, setRegister] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Offer biometric unlock only when this device is enrolled AND we still hold a
+  // valid session token — Face ID restores the key locally but can't re-auth.
+  const canBio = biometricSupported() && hasBiometricUnlock() && !!getJWT();
+  const [bioBusy, setBioBusy] = useState(false);
+
+  async function unlockBio() {
+    setErr(null);
+    setBioBusy(true);
+    try {
+      const { privateKey, pub, email: e } = await unlockWithBiometric();
+      setSession(privateKey, pub, e);
+      onAuth();
+      navigate("/");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/not allowed|cancel|abort/i.test(msg)) setErr(msg);
+    } finally {
+      setBioBusy(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,11 +60,7 @@ export function Login({ onAuth }: { onAuth: () => void }) {
       }
 
       // Unlock the private key locally.
-      const priv = await unwrapPrivateKey(
-        resp.encryptedPrivateKey,
-        resp.kdfSalt,
-        password
-      );
+      const priv = await unwrapPrivateKey(resp.encryptedPrivateKey, resp.kdfSalt, password);
       setJWT(resp.jwt);
       setSession(priv, resp.publicKey, email);
       onAuth();
@@ -51,7 +74,19 @@ export function Login({ onAuth }: { onAuth: () => void }) {
 
   return (
     <div className="card narrow">
+      <div className="eyebrow">{register ? "Get started" : canBio ? "Welcome back" : "Sign in"}</div>
       <h1>{register ? "Create account" : "Log in"}</h1>
+
+      {canBio && !register && (
+        <>
+          <button className="btn btn-primary btn-block" onClick={unlockBio} disabled={bioBusy}>
+            🔐 {bioBusy ? "Unlocking…" : `Unlock with Face ID`}
+          </button>
+          {biometricEmail() && <p className="muted" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>{biometricEmail()}</p>}
+          <div className="divider">or use password</div>
+        </>
+      )}
+
       <form onSubmit={submit}>
         <label>Email</label>
         <input
@@ -59,7 +94,8 @@ export function Login({ onAuth }: { onAuth: () => void }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          autoFocus
+          autoFocus={!canBio}
+          autoComplete="email"
         />
         <label>Password</label>
         <input
@@ -68,21 +104,23 @@ export function Login({ onAuth }: { onAuth: () => void }) {
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={8}
+          autoComplete={register ? "new-password" : "current-password"}
         />
         {err && <p className="error">{err}</p>}
-        <button type="submit" disabled={busy} className="primary">
+        <button type="submit" disabled={busy} className="btn btn-primary btn-block" style={{ marginTop: "1rem" }}>
           {busy ? "…" : register ? "Register" : "Log in"}
         </button>
       </form>
-      <p className="muted">
+
+      <p className="muted" style={{ marginTop: "1rem" }}>
         {register ? "Already have an account? " : "New here? "}
         <button className="link-btn" onClick={() => setRegister(!register)}>
           {register ? "Log in" : "Create one"}
         </button>
       </p>
       <p className="hint">
-        🔒 Your password never leaves this device unencrypted. It unlocks an
-        end-to-end encryption key — the server can't read your pipeline data.
+        🔒 Your password never leaves this device unencrypted. It unlocks an end-to-end encryption
+        key — the server can't read your pipeline data.
       </p>
     </div>
   );

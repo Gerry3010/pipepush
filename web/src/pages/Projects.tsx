@@ -34,28 +34,29 @@ export function Projects() {
 
   return (
     <div>
+      <div className="eyebrow">Workspace</div>
       <h1>Projects</h1>
       <form onSubmit={create} className="inline-form">
-        <input
-          placeholder="New project name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <button className="primary">Create</button>
+        <div className="row">
+          <input
+            placeholder="New project name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <button className="btn btn-primary">Create</button>
       </form>
       {err && <p className="error">{err}</p>}
       <div className="grid">
         {projects.map((p) => (
           <Link to={`/projects/${p.id}`} key={p.id} className="card link-card">
             <h3>{decrypt(p.encryptedName)}</h3>
-            {p.encryptedDescription && (
-              <p className="muted">{decrypt(p.encryptedDescription)}</p>
-            )}
+            {p.encryptedDescription && <p className="muted">{decrypt(p.encryptedDescription)}</p>}
             <span className="date">{new Date(p.createdAt).toLocaleDateString()}</span>
           </Link>
         ))}
-        {projects.length === 0 && <p className="muted">No projects yet.</p>}
       </div>
+      {projects.length === 0 && <div className="empty">No projects yet.</div>}
     </div>
   );
 }

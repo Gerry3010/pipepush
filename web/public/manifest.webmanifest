@@ -4,8 +4,8 @@
   "description": "End-to-end encrypted CI/CD pipeline notifications",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1e1e2e",
-  "theme_color": "#7D56F4",
+  "background_color": "#131019",
+  "theme_color": "#131019",
   "icons": [
     {
       "src": "/icon-192.png",
