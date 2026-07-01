@@ -48,6 +48,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
+      - name: Install librsvg (rsvg-convert for the icon prebuild hook)
+        run: sudo apt-get update && sudo apt-get install -y librsvg2-bin
       - name: Install web deps
         working-directory: web
         run: npm install
