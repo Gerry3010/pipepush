@@ -12,6 +12,14 @@
 const NAME_DB = "pipepush-names";
 const NAME_STORE = "pipelines";
 
+// Take over immediately on update. Without this, a deployed SW stays "waiting"
+// while any tab is open, so push events keep being handled by the OLD worker —
+// which is how the v0.7.0 named-notification code failed to render names even
+// though the (freshly loaded) page showed them. skipWaiting + clients.claim make
+// the new worker active as soon as it installs.
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
 // idbGetLabel resolves the cached "Project · Pipeline" label for a pipelineId,
 // or null. Best-effort — any error resolves null (falls back to a generic body).
 function idbGetLabel(pipelineId) {
