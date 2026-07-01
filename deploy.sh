@@ -157,9 +157,24 @@ services:
       VAPID_PUBLIC_KEY: \${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: \${VAPID_PRIVATE_KEY}
       VAPID_EMAIL: ${ADMIN_EMAIL}
+    labels:
+      com.centurylinklabs.watchtower.scope: pipepush
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+
+  # Auto-deploy: watch ghcr for a new :latest (published by the release workflow
+  # on every v* tag) and pull + restart pipepush automatically. Outbound-only, so
+  # it works behind a firewall that blocks inbound SSH. Scoped so it only ever
+  # touches the pipepush container, never postgres.
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --cleanup --scope pipepush --interval 120
+    labels:
+      com.centurylinklabs.watchtower.scope: pipepush
     restart: unless-stopped
 
   postgres:
