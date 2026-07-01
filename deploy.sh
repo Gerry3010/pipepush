@@ -125,8 +125,19 @@ step "2/6  Configuration"
 ask DOMAIN      "Domain (e.g. pipepush.example.com)"
 ask ADMIN_EMAIL "Admin e-mail (Let's Encrypt + VAPID)"
 
+# On re-run, reuse the host port the existing stack already binds — otherwise the
+# in-use guard below trips on our own running container and would pick a new port.
+REUSE_PORT=0
+if [[ -f "${INSTALL_DIR}/docker-compose.yml" ]]; then
+  EXISTING_PORT=$(sed -nE 's/.*127\.0\.0\.1:([0-9]+):8080.*/\1/p' "${INSTALL_DIR}/docker-compose.yml" | head -1)
+  if [[ -n "${EXISTING_PORT}" ]]; then
+    [[ -z "${PORT:-}" ]] && SERVER_PORT="${EXISTING_PORT}"
+    [[ "${SERVER_PORT}" == "${EXISTING_PORT}" ]] && REUSE_PORT=1
+  fi
+fi
+
 # Host port: default 8080, but detect conflicts and offer a free alternative.
-if port_in_use "$SERVER_PORT"; then
+if [[ "${REUSE_PORT}" -eq 0 ]] && port_in_use "$SERVER_PORT"; then
   warn "Host port ${SERVER_PORT} is already in use on this server."
   SUGGEST="$SERVER_PORT"
   for p in 8090 8091 8092 8180 8280 9090; do port_in_use "$p" || { SUGGEST="$p"; break; }; done
