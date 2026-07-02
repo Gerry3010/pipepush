@@ -180,7 +180,10 @@ services:
   # it works behind a firewall that blocks inbound SSH. Scoped so it only ever
   # touches the pipepush container, never postgres.
   watchtower:
-    image: containrrr/watchtower
+    # Maintained fork: the original containrrr/watchtower is unmaintained and
+    # ships a Docker API client too old for modern engines (it fails with
+    # "client version 1.25 is too old; minimum supported API version is 1.40").
+    image: ghcr.io/nicholas-fedor/watchtower:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --cleanup --scope pipepush --interval 120
