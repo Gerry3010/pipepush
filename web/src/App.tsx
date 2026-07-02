@@ -7,6 +7,7 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Projects } from "./pages/Projects";
 import { ProjectDetail } from "./pages/ProjectDetail";
+import { Settings } from "./pages/Settings";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   // Must have a JWT *and* an unlocked private key (else re-login to unlock).
@@ -47,11 +48,9 @@ export function App() {
                 Dashboard
               </NavLink>
               <NavLink to="/projects">Projects</NavLink>
+              <NavLink to="/settings">Settings</NavLink>
             </nav>
             <span className="acct-email">{getEmail()}</span>
-            <button onClick={logout} className="btn-icon" title="Lock &amp; log out" aria-label="Lock and log out">
-              ⏻
-            </button>
           </div>
         )}
       </header>
@@ -83,6 +82,14 @@ export function App() {
               </RequireAuth>
             }
           />
+          <Route
+            path="/settings"
+            element={
+              <RequireAuth>
+                <Settings onLogout={logout} />
+              </RequireAuth>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -101,12 +108,12 @@ export function App() {
             </span>
             Projects
           </NavLink>
-          <button className="tab-item" onClick={logout}>
+          <NavLink to="/settings" className="tab-item">
             <span className="ic" aria-hidden="true">
-              ⏻
+              ⚙
             </span>
-            Lock
-          </button>
+            Settings
+          </NavLink>
         </nav>
       )}
     </div>

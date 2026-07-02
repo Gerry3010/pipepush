@@ -675,6 +675,37 @@ select:focus {
   white-space: nowrap;
 }
 
+/* ---------- settings ---------- */
+
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.setting:last-child {
+  border-bottom: 0;
+}
+.setting-info {
+  min-width: 0;
+}
+.setting-title {
+  font-weight: 600;
+}
+.setting-desc {
+  font-size: 0.82rem;
+  margin-top: 0.15rem;
+  line-height: 1.45;
+}
+.setting-control {
+  flex: 0 0 auto;
+}
+.section-label {
+  margin: 1.5rem 0 0.25rem;
+}
+
 /* ---------- modal / bottom sheet ---------- */
 
 .modal-overlay {

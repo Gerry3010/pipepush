@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
-import { decrypt, getEmail, getPrivateKey, getPublicKey } from "../crypto/session";
-import { enablePush, disablePush, isPushEnabled, pushSupported } from "../push";
-import {
-  biometricAvailable,
-  hasBiometricUnlock,
-  enrollBiometric,
-  clearBiometricUnlock,
-} from "../crypto/biometric";
+import { decrypt } from "../crypto/session";
 import { useAutoRefresh } from "../useAutoRefresh";
 import { cachePipelineNames } from "../nameCache";
 import { RunFeed, RunItem } from "../components/RunFeed";
@@ -23,20 +16,6 @@ export function Dashboard() {
   const [summary, setSummary] = useState<Summary>({ pass: 0, fail: 0, running: 0 });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  const [pushMsg, setPushMsg] = useState<string | null>(null);
-  const [pushOn, setPushOn] = useState(false);
-  const [pushBusy, setPushBusy] = useState(false);
-
-  const [bioAvail, setBioAvail] = useState(false);
-  const [bioOn, setBioOn] = useState(hasBiometricUnlock(getEmail()));
-  const [bioBusy, setBioBusy] = useState(false);
-  const [bioMsg, setBioMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    isPushEnabled().then(setPushOn);
-    biometricAvailable().then(setBioAvail);
-  }, []);
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -99,51 +78,6 @@ export function Dashboard() {
   // Auto-refresh on a timer, on incoming Web Push, and on tab re-focus.
   useAutoRefresh(load);
 
-  async function togglePush() {
-    setPushBusy(true);
-    try {
-      if (pushOn) {
-        await disablePush();
-        setPushOn(false);
-        setPushMsg("Push notifications disabled on this device");
-      } else {
-        await enablePush();
-        setPushOn(true);
-        setPushMsg("Push notifications enabled on this device");
-      }
-    } catch (e) {
-      setPushMsg(e instanceof Error ? e.message : String(e));
-    } finally {
-      setPushBusy(false);
-    }
-  }
-
-  async function toggleBio() {
-    setBioBusy(true);
-    setBioMsg(null);
-    try {
-      if (bioOn) {
-        clearBiometricUnlock();
-        setBioOn(false);
-        setBioMsg("Face ID unlock removed from this device");
-        return;
-      }
-      const priv = getPrivateKey();
-      const pub = getPublicKey();
-      const email = getEmail();
-      if (!priv || !pub || !email) throw new Error("Session locked — log in again first");
-      await enrollBiometric(priv, pub, email);
-      setBioOn(true);
-      setBioMsg("Face ID unlock enabled — next time, skip the password on this device");
-    } catch (e) {
-      // A user cancelling the system prompt shouldn't read as an error.
-      const msg = e instanceof Error ? e.message : String(e);
-      setBioMsg(/not allowed|cancel|abort/i.test(msg) ? null : msg);
-    } finally {
-      setBioBusy(false);
-    }
-  }
-
   return (
     <div>
       <div className="page-head">
@@ -161,21 +95,6 @@ export function Dashboard() {
           {refreshing ? "…" : "↻"}
         </button>
       </div>
-
-      <div className="toolbar">
-        {pushSupported() && (
-          <button className={`chip${pushOn ? " on" : ""}`} onClick={togglePush} disabled={pushBusy}>
-            🔔 {pushBusy ? "…" : pushOn ? "Push on" : "Enable push"}
-          </button>
-        )}
-        {bioAvail && (
-          <button className={`chip${bioOn ? " on" : ""}`} onClick={toggleBio} disabled={bioBusy}>
-            🔐 {bioBusy ? "…" : bioOn ? "Face ID on" : "Enable Face ID"}
-          </button>
-        )}
-      </div>
-      {pushMsg && <p className="muted" style={{ fontSize: "0.85rem" }}>{pushMsg}</p>}
-      {bioMsg && <p className="muted" style={{ fontSize: "0.85rem" }}>{bioMsg}</p>}
 
       {recent.length > 0 && (
         <div className="signal-summary">
