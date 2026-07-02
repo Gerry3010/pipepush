@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { api } from "../api/client";
 import { getEmail, getPrivateKey, getPublicKey } from "../crypto/session";
 import { enablePush, disablePush, isPushEnabled, pushSupported } from "../push";
 import {
@@ -7,6 +8,7 @@ import {
   hasBiometricUnlock,
   enrollBiometric,
   clearBiometricUnlock,
+  biometricErrorMessage,
 } from "../crypto/biometric";
 
 export function Settings({ onLogout }: { onLogout: () => void }) {
@@ -20,10 +22,34 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
   const [bioBusy, setBioBusy] = useState(false);
   const [bioMsg, setBioMsg] = useState<string | null>(null);
 
+  // Retention: null = keep forever. "" in the <select> maps to null.
+  const [retention, setRetention] = useState<number | null>(null);
+  const [retentionMsg, setRetentionMsg] = useState<string | null>(null);
+
   useEffect(() => {
     isPushEnabled().then(setPushOn);
     biometricAvailable().then(setBioAvail);
+    api
+      .getSettings()
+      .then((s) => setRetention(s.retentionHours))
+      .catch(() => {
+        /* leave default */
+      });
   }, []);
+
+  async function changeRetention(value: string) {
+    const hours = value === "" ? null : parseInt(value, 10);
+    const prev = retention;
+    setRetention(hours);
+    setRetentionMsg(null);
+    try {
+      await api.updateSettings({ retentionHours: hours });
+      setRetentionMsg("Saved.");
+    } catch (e) {
+      setRetention(prev);
+      setRetentionMsg(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   async function togglePush() {
     setPushBusy(true);
@@ -61,24 +87,19 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
       setBioOn(true);
       setBioMsg("Enabled — next time you can skip the password on this device.");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      // Cancelling the system prompt isn't an error worth surfacing.
-      setBioMsg(/not allowed|cancel|abort/i.test(msg) ? null : msg);
+      setBioMsg(biometricErrorMessage(e));
     } finally {
       setBioBusy(false);
     }
   }
 
-  // What to render for the biometric control, given availability.
+  // What to render for the biometric control. We DON'T hard-gate on isUVPAA:
+  // inside an installed iOS PWA it often reports false even when Face ID exists.
+  // So we offer Enable whenever the WebAuthn APIs are present and let the enroll
+  // attempt surface the real reason if it can't proceed.
   function bioControl() {
     if (!biometricSupported()) {
       return <span className="muted" style={{ fontSize: "0.82rem" }}>Not supported here</span>;
-    }
-    if (bioAvail === undefined) {
-      return <span className="muted" style={{ fontSize: "0.82rem" }}>…</span>;
-    }
-    if (!bioAvail) {
-      return <span className="muted" style={{ fontSize: "0.82rem" }}>Unavailable</span>;
     }
     return (
       <button className={`chip${bioOn ? " on" : ""}`} onClick={toggleBio} disabled={bioBusy}>
@@ -89,7 +110,7 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
 
   const bioDesc =
     biometricSupported() && bioAvail === false
-      ? "This device has no Face ID / Touch ID / Windows Hello. Open pipepush on your phone to enable it there."
+      ? "Unlock with Face ID / Touch ID instead of your password on this device. Your device didn’t report a biometric sensor — tap Enable to try anyway; if it can’t, the reason shows below."
       : "Unlock with Face ID instead of your password on this device. Your key is wrapped behind the biometric locally — the plaintext never leaves the device.";
 
   return (
@@ -127,6 +148,34 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
       </div>
       {pushMsg && <p className="error">{pushMsg}</p>}
       {bioMsg && <p className="muted" style={{ fontSize: "0.85rem" }}>{bioMsg}</p>}
+
+      <div className="eyebrow section-label">Data</div>
+      <div className="card">
+        <div className="setting">
+          <div className="setting-info">
+            <div className="setting-title">Data retention</div>
+            <div className="setting-desc muted">
+              Runs and their logs older than this are deleted automatically. Applies to all your
+              devices.
+            </div>
+          </div>
+          <div className="setting-control">
+            <select
+              value={retention === null ? "" : String(retention)}
+              onChange={(e) => changeRetention(e.target.value)}
+              style={{ width: "auto" }}
+            >
+              <option value="">Keep forever</option>
+              <option value="6">6 hours</option>
+              <option value="24">24 hours</option>
+              <option value="72">3 days</option>
+              <option value="168">1 week</option>
+              <option value="336">2 weeks</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      {retentionMsg && <p className="muted" style={{ fontSize: "0.85rem" }}>{retentionMsg}</p>}
 
       <div className="eyebrow section-label">Account</div>
       <div className="card">

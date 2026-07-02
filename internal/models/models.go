@@ -59,6 +59,7 @@ type RunPayload struct {
 	Branch   string `json:"branch,omitempty"`
 	Duration string `json:"duration,omitempty"`
 	Message  string `json:"message,omitempty"`
+	Logs     string `json:"logs,omitempty"`
 }
 
 type VAPIDSubscription struct {
@@ -102,6 +103,18 @@ type WebhookRequest struct {
 	Branch   string `json:"branch,omitempty"`
 	Duration string `json:"duration,omitempty"`
 	Message  string `json:"message,omitempty"`
+	Logs     string `json:"logs,omitempty"`
+}
+
+// SettingsResponse / UpdateSettingsRequest carry per-user preferences.
+// RetentionHours is nil = keep runs forever; otherwise runs older than this many
+// hours are pruned automatically.
+type SettingsResponse struct {
+	RetentionHours *int `json:"retentionHours"`
+}
+
+type UpdateSettingsRequest struct {
+	RetentionHours *int `json:"retentionHours"`
 }
 
 type PushSubscribeRequest struct {

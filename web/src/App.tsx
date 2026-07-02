@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Routes, Route, Navigate, Link, NavLink, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { getJWT, setJWT } from "./api/client";
 import { isUnlocked, clearSession, getEmail } from "./crypto/session";
 import { clearBiometricUnlock } from "./crypto/biometric";
@@ -7,12 +7,16 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Projects } from "./pages/Projects";
 import { ProjectDetail } from "./pages/ProjectDetail";
+import { RunDetail } from "./pages/RunDetail";
 import { Settings } from "./pages/Settings";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
+  const loc = useLocation();
   // Must have a JWT *and* an unlocked private key (else re-login to unlock).
+  // Remember where we were headed so login can return there (e.g. a run opened
+  // from a push notification while the app was locked).
   if (!getJWT() || !isUnlocked()) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: loc.pathname + loc.search }} />;
   }
   return <>{children}</>;
 }
@@ -79,6 +83,14 @@ export function App() {
             element={
               <RequireAuth>
                 <ProjectDetail />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/runs/:runId"
+            element={
+              <RequireAuth>
+                <RunDetail />
               </RequireAuth>
             }
           />

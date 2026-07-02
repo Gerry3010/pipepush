@@ -38,6 +38,7 @@ func NewRouter(cfg *config.ServerConfig, database *db.DB) http.Handler {
 	runH := handlers.NewRunHandler(database)
 	webhookH := handlers.NewWebhookHandler(database, dispatcher, hub)
 	pushH := handlers.NewPushHandler(database, cfg.VAPIDPublic)
+	settingsH := handlers.NewSettingsHandler(database)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -70,6 +71,9 @@ func NewRouter(cfg *config.ServerConfig, database *db.DB) http.Handler {
 
 			r.Get("/pipelines/{pipelineID}/runs", runH.List)
 			r.Get("/runs/{id}", runH.Get)
+
+			r.Get("/settings", settingsH.Get)
+			r.Post("/settings", settingsH.Update)
 
 			r.Post("/push/subscribe", pushH.Subscribe)
 			r.Delete("/push/subscribe", pushH.Unsubscribe)

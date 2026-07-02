@@ -39,6 +39,11 @@ export interface Run {
   receivedAt: string;
 }
 
+export interface Settings {
+  // null = keep runs forever; otherwise prune runs older than this many hours.
+  retentionHours: number | null;
+}
+
 let jwt: string | null = localStorage.getItem("pp_jwt");
 
 export function setJWT(token: string | null) {
@@ -113,6 +118,10 @@ export const api = {
 
   listRuns: (pipelineId: string, limit = 50) =>
     req<Run[]>("GET", `/pipelines/${pipelineId}/runs?limit=${limit}`),
+  getRun: (id: string) => req<Run>("GET", `/runs/${id}`),
+
+  getSettings: () => req<Settings>("GET", "/settings"),
+  updateSettings: (s: Settings) => req<Settings>("POST", "/settings", s),
 
   vapidKey: () => req<{ publicKey: string }>("GET", "/push/vapid-key"),
   subscribePush: (b: {

@@ -320,6 +320,39 @@ func (d *DB) GetRun(ctx context.Context, id, userID string) (*models.Run, error)
 	return &r, nil
 }
 
+// --- Settings (retention) ---
+
+// GetRetention returns the user's run retention in hours, or nil for "keep forever".
+func (d *DB) GetRetention(ctx context.Context, userID string) (*int, error) {
+	var h *int
+	err := d.pool.QueryRow(ctx, `SELECT retention_hours FROM users WHERE id = $1`, userID).Scan(&h)
+	if err != nil {
+		return nil, fmt.Errorf("getting retention: %w", err)
+	}
+	return h, nil
+}
+
+// SetRetention sets the user's run retention in hours (nil = keep forever).
+func (d *DB) SetRetention(ctx context.Context, userID string, hours *int) error {
+	_, err := d.pool.Exec(ctx, `UPDATE users SET retention_hours = $2 WHERE id = $1`, userID, hours)
+	return err
+}
+
+// PruneExpiredRuns deletes runs (and the logs embedded in their payload) older
+// than each user's configured retention window. Users with NULL retention are
+// skipped (keep forever). Returns the number of runs removed.
+func (d *DB) PruneExpiredRuns(ctx context.Context) (int64, error) {
+	tag, err := d.pool.Exec(ctx, `
+		DELETE FROM runs r USING users u
+		WHERE r.user_id = u.id
+		  AND u.retention_hours IS NOT NULL
+		  AND r.received_at < NOW() - make_interval(hours => u.retention_hours)`)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
 // --- VAPID Subscriptions ---
 
 func (d *DB) UpsertVAPIDSubscription(ctx context.Context, userID, endpoint, p256dh, auth, deviceName string) error {

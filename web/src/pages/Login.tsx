@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { api, setJWT, getJWT } from "../api/client";
 import { generateKeypair, wrapPrivateKey, unwrapPrivateKey } from "../crypto/ecies";
 import { setSession, getEmail } from "../crypto/session";
@@ -8,6 +8,7 @@ import {
   hasBiometricUnlock,
   unlockWithBiometric,
   biometricEmail,
+  biometricErrorMessage,
 } from "../crypto/biometric";
 
 export function Login({ onAuth }: { onAuth: () => void }) {
@@ -17,6 +18,9 @@ export function Login({ onAuth }: { onAuth: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const navigate = useNavigate();
+  const loc = useLocation();
+  // Where a deep link (e.g. a run from a push notification) wanted to go.
+  const dest = (loc.state as { from?: string } | null)?.from ?? "/";
 
   // Offer biometric unlock only when this device is enrolled AND we still hold a
   // valid session token — Face ID restores the key locally but can't re-auth.
@@ -30,10 +34,9 @@ export function Login({ onAuth }: { onAuth: () => void }) {
       const { privateKey, pub, email: e } = await unlockWithBiometric();
       setSession(privateKey, pub, e);
       onAuth();
-      navigate("/");
+      navigate(dest);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!/not allowed|cancel|abort/i.test(msg)) setErr(msg);
+      setErr(biometricErrorMessage(e));
     } finally {
       setBioBusy(false);
     }
@@ -64,7 +67,7 @@ export function Login({ onAuth }: { onAuth: () => void }) {
       setJWT(resp.jwt);
       setSession(priv, resp.publicKey, email);
       onAuth();
-      navigate("/");
+      navigate(dest);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {

@@ -74,7 +74,15 @@ function otherSnippet(token: string, server: string): string {
   -d '{"token":"${token}","status":"success","pipeline":"CI","branch":"main","commit":"abc1234"}'
 
 # status accepts CI-native values (passed, failed, aborted, …) — normalized server-side.
-# Fields: token (required), status (required), pipeline, branch, commit, runId, duration, message.`;
+# Fields: token (required), status (required), pipeline, branch, commit, runId, duration, message, logs.
+
+# Optional: attach build logs (stored end-to-end encrypted, shown in the run
+# detail view). Build the JSON with jq so arbitrary log text is escaped safely:
+LOGS=$(tail -c 4000 build.log 2>/dev/null || true)
+jq -nc --arg token "${token}" --arg status "success" --arg pipeline "CI" \\
+      --arg branch "main" --arg commit "abc1234" --arg logs "$LOGS" \\
+      '{token:$token,status:$status,pipeline:$pipeline,branch:$branch,commit:$commit,logs:$logs}' \\
+  | curl -sf -X POST "${server}/api/webhook" -H "Content-Type: application/json" -d @-`;
 }
 
 export function TokenSetupModal({ token, serverUrl, pipelineBound, onClose }: Props) {

@@ -217,3 +217,23 @@ export async function unlockWithBiometric(): Promise<{
 export function biometricEmail(): string | null {
   return loadRecord()?.email ?? null;
 }
+
+// biometricErrorMessage turns a WebAuthn/enroll error into user-facing copy, or
+// null when the user simply cancelled the system prompt (nothing to show).
+export function biometricErrorMessage(e: unknown): string | null {
+  const name = e instanceof DOMException ? e.name : (e as { name?: string })?.name;
+  const msg = e instanceof Error ? e.message : String(e);
+  if (name === "NotAllowedError" || name === "AbortError" || /not allowed|cancel|abort/i.test(msg)) {
+    return null; // dismissed — not an error worth surfacing
+  }
+  if (name === "NotSupportedError" || /prf|support/i.test(msg)) {
+    return "Face ID unlock isn’t supported here — it needs a platform passkey with the PRF extension (iOS 18+ / a recent browser).";
+  }
+  if (name === "SecurityError") {
+    return "Face ID unlock needs a secure (HTTPS) context on this domain.";
+  }
+  if (name === "InvalidStateError") {
+    return "A passkey is already registered on this device. Try again, or remove it in your device settings.";
+  }
+  return msg;
+}

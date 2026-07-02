@@ -34,9 +34,12 @@ func (d *Dispatcher) Enabled() bool {
 	return d.vapidPublic != "" && d.vapidPrivate != ""
 }
 
-// pushPayload is the JSON sent to the browser service worker.
-// Only the encrypted blob and a run id travel through the push service —
-// the actual run details are inside encryptedPayload (E2E).
+// pushPayload is the JSON sent to the browser service worker. It is deliberately
+// tiny — only non-sensitive routing metadata travels through the push service.
+// The run details (and logs) are NOT included: they can be large and would blow
+// the ~4KB Web Push limit, and keeping them out means nothing sensitive passes
+// through the push provider. Open pages refetch on the "run_update" signal, and
+// the run-detail view fetches the full E2E payload via GET /runs/{id}.
 type pushPayload struct {
 	Type  string `json:"type"`
 	RunID string `json:"runId"`
@@ -44,9 +47,8 @@ type pushPayload struct {
 	// to look up the locally-cached, client-decrypted pipeline/project name so the
 	// notification can show it — the plaintext name never travels through the push
 	// service, preserving E2E.
-	PipelineID       string `json:"pipelineId"`
-	Status           string `json:"status"`
-	EncryptedPayload string `json:"encryptedPayload"`
+	PipelineID string `json:"pipelineId"`
+	Status     string `json:"status"`
 }
 
 // SendRunNotification pushes an encrypted run update to all of the user's devices.
@@ -62,11 +64,10 @@ func (d *Dispatcher) SendRunNotification(ctx context.Context, userID string, run
 	}
 
 	payload, _ := json.Marshal(pushPayload{
-		Type:             "run_update",
-		RunID:            run.ID,
-		PipelineID:       run.PipelineID,
-		Status:           run.Status,
-		EncryptedPayload: run.EncryptedPayload,
+		Type:       "run_update",
+		RunID:      run.ID,
+		PipelineID: run.PipelineID,
+		Status:     run.Status,
 	})
 
 	for _, sub := range subs {

@@ -61,6 +61,11 @@ func main() {
 	}
 	defer database.Close()
 
+	// Background retention: prune runs older than each user's configured window.
+	pruneCtx, pruneCancel := context.WithCancel(context.Background())
+	defer pruneCancel()
+	go runPruneLoop(pruneCtx, database)
+
 	router := server.NewRouter(cfg, database)
 
 	srv := &http.Server{
@@ -87,5 +92,29 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown error", "error", err)
+	}
+}
+
+// runPruneLoop deletes runs past their owner's retention window — once at startup
+// and then hourly — until the context is cancelled on shutdown.
+func runPruneLoop(ctx context.Context, database *db.DB) {
+	prune := func() {
+		n, err := database.PruneExpiredRuns(ctx)
+		if err != nil {
+			slog.Warn("run prune failed", "error", err)
+		} else if n > 0 {
+			slog.Info("pruned expired runs", "count", n)
+		}
+	}
+	prune()
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			prune()
+		}
 	}
 }

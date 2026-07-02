@@ -618,6 +618,77 @@ select:focus {
   }
 }
 
+/* run cards are links to the detail view */
+.run {
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.run:hover {
+  border-color: var(--brand);
+}
+
+/* ---------- run detail ---------- */
+
+.run-detail {
+  --s: var(--cancel);
+}
+.run-detail.run-success {
+  --s: var(--pass);
+}
+.run-detail.run-failure {
+  --s: var(--fail);
+}
+.run-detail.run-running {
+  --s: var(--run);
+}
+.run-detail.run-skipped {
+  --s: var(--idle);
+}
+.rd-hero {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.1rem 0 1rem;
+}
+.rd-hero .node {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 1.6rem;
+  color: var(--s);
+}
+.rd-hero h1 {
+  margin: 0;
+}
+.rd-message {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--s);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  margin: 0 0 1.25rem;
+}
+.rd-meta {
+  margin: 0 0 0.5rem;
+  padding: 0;
+}
+.rd-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.rd-row dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.rd-row dd {
+  margin: 0;
+  text-align: right;
+  word-break: break-all;
+}
+
 /* ---------- auth ---------- */
 
 .hint {

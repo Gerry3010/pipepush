@@ -22,6 +22,18 @@ var validStatuses = map[string]bool{
 	"skipped":   true,
 }
 
+// maxLogBytes bounds how much log output we keep per run so encrypted payloads
+// (and the DB) don't grow without limit. We keep the tail — the end of CI output
+// is usually the most relevant (errors, summary).
+const maxLogBytes = 16 * 1024
+
+func capLogs(s string) string {
+	if len(s) <= maxLogBytes {
+		return s
+	}
+	return "…(truncated)\n" + s[len(s)-maxLogBytes:]
+}
+
 type WebhookHandler struct {
 	db         *db.DB
 	dispatcher *push.Dispatcher
@@ -113,6 +125,7 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		Branch:   req.Branch,
 		Duration: req.Duration,
 		Message:  req.Message,
+		Logs:     capLogs(req.Logs),
 	}
 	plaintext, _ := json.Marshal(payload)
 

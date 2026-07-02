@@ -101,5 +101,29 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(self.clients.openWindow("/"));
+  const runId = event.notification.data && event.notification.data.runId;
+  const url = runId ? `/runs/${runId}` : "/";
+  event.waitUntil(
+    (async () => {
+      // Reuse an open app window if there is one (focus + navigate), else open.
+      const clientsList = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of clientsList) {
+        if ("focus" in client) {
+          await client.focus();
+          if ("navigate" in client) {
+            try {
+              await client.navigate(url);
+            } catch {
+              /* cross-origin/redirect guard — focus is enough */
+            }
+          }
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })()
+  );
 });

@@ -1,5 +1,8 @@
 // Shared run feed — the signature element. Each run is a card with a colored
 // "pipe spine" and a status node; the newest run of a running pipeline pulses.
+// Each card links to the run's detail view.
+
+import { Link } from "react-router-dom";
 
 export const statusGlyph: Record<string, string> = {
   success: "✓",
@@ -42,28 +45,30 @@ function Run({ r }: { r: RunItem }) {
     .filter(Boolean)
     .join(" · ");
   return (
-    <li className={`run run-${r.status}`}>
-      <span className="node" aria-hidden="true">
-        {statusGlyph[r.status] ?? "•"}
-      </span>
-      <div className="run-body">
-        <div className="run-title">
-          {r.project && (
-            <>
-              <span className="proj">{r.project}</span>
-              <span className="sep">·</span>
-            </>
-          )}
-          {r.pipeline}
+    <li>
+      <Link className={`run run-${r.status}`} to={`/runs/${r.key}`}>
+        <span className="node" aria-hidden="true">
+          {statusGlyph[r.status] ?? "•"}
+        </span>
+        <div className="run-body">
+          <div className="run-title">
+            {r.project && (
+              <>
+                <span className="proj">{r.project}</span>
+                <span className="sep">·</span>
+              </>
+            )}
+            {r.pipeline}
+          </div>
+          {sub && <div className="run-sub">{sub}</div>}
         </div>
-        {sub && <div className="run-sub">{sub}</div>}
-      </div>
-      <div className="run-meta">
-        {r.live && <span className="run-live">live</span>}
-        <time className="run-when" dateTime={r.when} title={new Date(r.when).toLocaleString()}>
-          {relTime(r.when)}
-        </time>
-      </div>
+        <div className="run-meta">
+          {r.live && <span className="run-live">live</span>}
+          <time className="run-when" dateTime={r.when} title={new Date(r.when).toLocaleString()}>
+            {relTime(r.when)}
+          </time>
+        </div>
+      </Link>
     </li>
   );
 }
