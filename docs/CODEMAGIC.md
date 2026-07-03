@@ -54,7 +54,31 @@ Codemagic variables used:
   **skipped** once an earlier build step fails, so failures (the important case)
   would never notify.
 - The contract is identical to every other provider: `POST $PIPEPUSH_SERVER/api/webhook`
-  with `{ token, status, pipeline?, branch?, commit?, runId? }`. `status` is
-  normalized server-side, so `success`/`failure` are fine.
+  with `{ token, status, pipeline?, branch?, commit?, runId?, logs? }`. The snippet
+  already emits a valid `status` (`success`/`failure`) — the raw webhook does not
+  normalize, so send one of `success|failure|cancelled|running|skipped`.
 - Codemagic builds are Apple/Flutter CI — verify the wiring with a real Codemagic
   build (the Mac side of the team) before relying on it.
+
+## Optional: attach build logs
+
+Logs are stored end-to-end encrypted and shown in the run detail view (server keeps
+the last 16 KB). Capture your build step's output to a file, then send the tail with
+`jq` (present on Codemagic's macOS images) so the log text is escaped safely:
+
+```yaml
+    scripts:
+      - name: Build
+        script: your-build-command 2>&1 | tee build.log   # capture output
+    publishing:
+      scripts:
+        - name: Notify pipepush
+          script: |
+            if [ "$CM_BUILD_STEP_STATUS" = "success" ]; then STATUS=success; else STATUS=failure; fi
+            LOGS=$(tail -c 16000 build.log 2>/dev/null || true)
+            jq -nc --arg token "$PIPEPUSH_TOKEN" --arg status "$STATUS" \
+              --arg pipeline "$CM_WORKFLOW_ID" --arg branch "${CM_BRANCH:-$CM_TAG}" \
+              --arg commit "$CM_COMMIT" --arg runId "$BUILD_NUMBER" --arg logs "$LOGS" \
+              '{token:$token,status:$status,pipeline:$pipeline,branch:$branch,commit:$commit,runId:$runId,logs:$logs}' \
+              | curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" -H "Content-Type: application/json" -d @-
+```

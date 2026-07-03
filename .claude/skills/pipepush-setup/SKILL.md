@@ -76,7 +76,9 @@ Once `pipepush whoami` succeeds:
        PIPEPUSH_SERVER: ${{ vars.PIPEPUSH_SERVER }}
    ```
 
-   **GitLab CI** — add a job in `.gitlab-ci.yml`:
+   **GitLab CI** — add a job in `.gitlab-ci.yml`. GitLab's `$CI_JOB_STATUS` is
+   `success`/`failed`/`canceled`; the webhook only accepts `success`/`failure`/
+   `cancelled`, so map it first:
    ```yaml
    notify_pipepush:
      stage: .post
@@ -84,9 +86,14 @@ Once `pipepush whoami` succeeds:
      image: curlimages/curl:latest
      script:
        - |
+         case "$CI_JOB_STATUS" in
+           success) STATUS=success ;;
+           canceled) STATUS=cancelled ;;
+           *) STATUS=failure ;;
+         esac
          curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" \
            -H "Content-Type: application/json" \
-           -d "{\"token\":\"$PIPEPUSH_TOKEN\",\"status\":\"$CI_JOB_STATUS\",\"pipeline\":\"$CI_PIPELINE_NAME\",\"branch\":\"$CI_COMMIT_REF_NAME\",\"commit\":\"$CI_COMMIT_SHA\"}"
+           -d "{\"token\":\"$PIPEPUSH_TOKEN\",\"status\":\"$STATUS\",\"pipeline\":\"$CI_PIPELINE_NAME\",\"branch\":\"$CI_COMMIT_REF_NAME\",\"commit\":\"$CI_COMMIT_SHA\"}"
    ```
    (Set `PIPEPUSH_TOKEN` and `PIPEPUSH_SERVER` as masked CI/CD variables.)
 
@@ -125,10 +132,33 @@ Once `pipepush whoami` succeeds:
    (Full notes in `docs/CODEMAGIC.md`. Codemagic = Apple/Flutter CI — verify on a real build.)
 
    **Other providers** — the contract is just `POST $PIPEPUSH_SERVER/api/webhook`
-   with JSON `{ token, status, pipeline?, branch?, commit?, runId?, duration?, message? }`.
-   `status` accepts CI-native values (`passed`, `failed`, `aborted`, …) — they're
-   normalized server-side. `pipeline` is optional for a pipeline-bound token but
-   **required** for a project-wide token (it selects/creates the pipeline by name).
+   with JSON `{ token, status, pipeline?, branch?, commit?, runId?, duration?, message?, logs? }`.
+   `status` must be one of `success`, `failure`, `cancelled`, `running`, `skipped`
+   (the webhook does **not** normalize — only the `pipepush send` CLI and the
+   `pipepush_send` MCP tool map CI-native values like `passed`/`failed`/`aborted`
+   before sending; raw curl must send a valid value). `pipeline` is optional for a
+   pipeline-bound token but **required** for a project-wide token (it selects/creates
+   the pipeline by name). `logs` is optional build output — see below.
+
+   **Attaching build logs (optional)** — logs are stored end-to-end encrypted (like
+   every other run detail) and shown in the run detail view; the server keeps the
+   last 16 KB. Nothing captures logs automatically: pipe your build step's output to
+   a file first (e.g. `your-build 2>&1 | tee build.log`), then send the tail. Two ways:
+
+   - **Raw curl + jq** (jq escapes multi-line log text safely; preinstalled on GitHub
+     runners, `apk add jq` on the GitLab curl image):
+     ```bash
+     LOGS=$(tail -c 16000 build.log 2>/dev/null || true)
+     jq -nc --arg token "$PIPEPUSH_TOKEN" --arg status "$STATUS" --arg pipeline "CI" \
+           --arg branch "$BRANCH" --arg commit "$COMMIT" --arg logs "$LOGS" \
+           '{token:$token,status:$status,pipeline:$pipeline,branch:$branch,commit:$commit,logs:$logs}' \
+       | curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" -H "Content-Type: application/json" -d @-
+     ```
+   - **The `pipepush send` binary** (no jq needed — Go escapes + truncates for you):
+     ```bash
+     pipepush send --token "$PIPEPUSH_TOKEN" --status "$STATUS" --pipeline CI \
+       --branch "$BRANCH" --commit "$COMMIT" --logs-file build.log
+     ```
 
 5. **Verify** end-to-end without waiting for a real build:
    ```bash

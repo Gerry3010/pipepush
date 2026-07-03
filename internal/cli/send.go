@@ -13,8 +13,20 @@ import (
 	"github.com/Gerry3010/pipepush/internal/session"
 )
 
+// maxLogBytes mirrors the server's cap (internal/server/handlers/webhook.go).
+// We tail-trim client-side too so CI doesn't upload megabytes only to have the
+// server discard all but the last 16 KB.
+const maxLogBytes = 16 * 1024
+
+func tailLogs(s string) string {
+	if len(s) <= maxLogBytes {
+		return s
+	}
+	return "…(truncated)\n" + s[len(s)-maxLogBytes:]
+}
+
 func newSendCmd() *cobra.Command {
-	var token, status, serverFlag, pipeline, runID, commit, branch, duration, message string
+	var token, status, serverFlag, pipeline, runID, commit, branch, duration, message, logs, logsFile string
 
 	cmd := &cobra.Command{
 		Use:   "send",
@@ -25,7 +37,11 @@ This is the command you call from a CI/CD step. It only needs a token, so it
 works without logging in. The token is created with 'pipepush tokens create'.
 
 Status is normalized, so CI-native values like "passed"/"failed" work directly
-(e.g. GitHub Actions ${{ job.status }}).`,
+(e.g. GitHub Actions ${{ job.status }}).
+
+Optionally attach build logs with --logs or --logs-file. Logs are stored
+end-to-end encrypted (like every other run detail) and shown in the run detail
+view. The server keeps the last 16 KB; larger logs are tail-truncated.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if token == "" {
 				token = os.Getenv("PIPEPUSH_TOKEN")
@@ -51,6 +67,16 @@ Status is normalized, so CI-native values like "passed"/"failed" work directly
 				return fmt.Errorf("server URL required: use --server, PIPEPUSH_SERVER, or 'pipepush server set'")
 			}
 
+			// Logs are optional and must never break the status report: if the
+			// log file can't be read, warn and send the notification anyway.
+			if logs == "" && logsFile != "" {
+				if data, err := os.ReadFile(logsFile); err != nil {
+					fmt.Fprintf(os.Stderr, "warning: could not read --logs-file %q: %v\n", logsFile, err)
+				} else {
+					logs = string(data)
+				}
+			}
+
 			api := client.New(serverURL, "")
 			err := api.Send(context.Background(), models.WebhookRequest{
 				Token:    token,
@@ -61,6 +87,7 @@ Status is normalized, so CI-native values like "passed"/"failed" work directly
 				Branch:   branch,
 				Duration: duration,
 				Message:  message,
+				Logs:     tailLogs(logs),
 			})
 			if err != nil {
 				return err
@@ -79,6 +106,8 @@ Status is normalized, so CI-native values like "passed"/"failed" work directly
 	cmd.Flags().StringVar(&branch, "branch", "", "Branch name")
 	cmd.Flags().StringVar(&duration, "duration", "", "Run duration (e.g. 3m12s)")
 	cmd.Flags().StringVar(&message, "message", "", "Free-form message")
+	cmd.Flags().StringVar(&logs, "logs", "", "Build log text to attach (E2E-encrypted; last 16 KB kept)")
+	cmd.Flags().StringVar(&logsFile, "logs-file", "", "Read build logs from this file (ignored if --logs is set)")
 
 	return cmd
 }

@@ -51,15 +51,26 @@ Content-Type: application/json
 
 {
   "token":    "pp_…",          // required
-  "status":   "success",        // required; CI-native values like "passed" are normalized
+  "status":   "success",        // required; one of success|failure|cancelled|running|skipped
   "pipeline": "Deploy",         // optional, informational
   "branch":   "main",           // optional
   "commit":   "abc123",         // optional
   "runId":    "42",             // optional
   "duration": "3m12s",          // optional
-  "message":  "All green"       // optional
+  "message":  "All green",      // optional
+  "logs":     "build output…"   // optional; E2E-encrypted, server keeps the last 16 KB
 }
 ```
+
+The raw webhook does **not** normalize `status` — send an exact value. The
+`pipepush send` CLI and the `pipepush_send` MCP tool do map CI-native values
+(`passed`/`failed`/`aborted`/…) before sending, so prefer them where possible.
+
+**Attaching build logs.** Logs are stored end-to-end encrypted like every other
+run detail and shown in the run detail view (`/runs/:runId`). Nothing captures them
+automatically — pipe your build to a file (`your-build 2>&1 | tee build.log`), then
+either send with `pipepush send … --logs-file build.log` (Go escapes + truncates
+for you, no jq needed) or build the JSON with `jq --arg logs "$(tail -c 16000 build.log)"`.
 
 ## 5. Verify without a real build
 

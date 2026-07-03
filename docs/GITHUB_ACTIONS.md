@@ -74,6 +74,33 @@ Add to the end of your job:
           PIPEPUSH_SERVER: ${{ vars.PIPEPUSH_SERVER }}
 ```
 
+## 2c. With build logs
+
+Logs are stored end-to-end encrypted (like every other run detail) and shown in the
+run detail view; the server keeps the last 16 KB. Pipe the build step's output to a
+file, then attach the tail. `jq` is preinstalled on GitHub-hosted runners and escapes
+multi-line log text safely:
+
+```yaml
+      - name: Build
+        run: your-build-command 2>&1 | tee build.log   # capture output
+
+      - name: Notify pipepush
+        if: always()
+        run: |
+          LOGS=$(tail -c 16000 build.log 2>/dev/null || true)
+          jq -nc --arg token "$PIPEPUSH_TOKEN" --arg status "${{ job.status }}" \
+            --arg pipeline "${{ github.workflow }}" --arg branch "${{ github.ref_name }}" \
+            --arg commit "${{ github.sha }}" --arg runId "${{ github.run_number }}" --arg logs "$LOGS" \
+            '{token:$token,status:$status,pipeline:$pipeline,branch:$branch,commit:$commit,runId:$runId,logs:$logs}' \
+            | curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" -H "Content-Type: application/json" -d @-
+        env:
+          PIPEPUSH_TOKEN: ${{ secrets.PIPEPUSH_TOKEN }}
+          PIPEPUSH_SERVER: ${{ vars.PIPEPUSH_SERVER }}
+```
+
+Or with the binary (no jq): add `--logs-file build.log` to the `pipepush send` in 2b.
+
 ## Notify as a separate job (covers the whole workflow)
 
 ```yaml

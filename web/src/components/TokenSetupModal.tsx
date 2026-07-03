@@ -30,6 +30,22 @@ gh variable set PIPEPUSH_SERVER --body "${server}"
             -d "{\\"token\\":\\"$PIPEPUSH_TOKEN\\",\\"status\\":\\"\${{ job.status }}\\",\\"pipeline\\":\\"\${{ github.workflow }}\\",\\"branch\\":\\"\${{ github.ref_name }}\\",\\"commit\\":\\"\${{ github.sha }}\\",\\"runId\\":\\"\${{ github.run_number }}\\"}"
         env:
           PIPEPUSH_TOKEN: \${{ secrets.PIPEPUSH_TOKEN }}
+          PIPEPUSH_SERVER: \${{ vars.PIPEPUSH_SERVER }}
+
+# Optional: also attach build logs (stored end-to-end encrypted, shown in the run
+# detail view). Pipe your build to a file — "your-build 2>&1 | tee build.log" —
+# then build the JSON with jq (preinstalled on GitHub runners) and send the tail:
+      - name: Notify pipepush
+        if: always()
+        run: |
+          LOGS=$(tail -c 16000 build.log 2>/dev/null || true)
+          jq -nc --arg token "$PIPEPUSH_TOKEN" --arg status "\${{ job.status }}" \\
+            --arg pipeline "\${{ github.workflow }}" --arg branch "\${{ github.ref_name }}" \\
+            --arg commit "\${{ github.sha }}" --arg runId "\${{ github.run_number }}" --arg logs "$LOGS" \\
+            '{token:$token,status:$status,pipeline:$pipeline,branch:$branch,commit:$commit,runId:$runId,logs:$logs}' \\
+            | curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" -H "Content-Type: application/json" -d @-
+        env:
+          PIPEPUSH_TOKEN: \${{ secrets.PIPEPUSH_TOKEN }}
           PIPEPUSH_SERVER: \${{ vars.PIPEPUSH_SERVER }}`;
 }
 
@@ -44,9 +60,23 @@ notify_pipepush:
   image: curlimages/curl:latest
   script:
     - |
+      # $CI_JOB_STATUS is success/failed/canceled; the webhook wants success/failure/cancelled:
+      case "$CI_JOB_STATUS" in
+        success) STATUS=success ;;
+        canceled) STATUS=cancelled ;;
+        *) STATUS=failure ;;
+      esac
       curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" \\
         -H "Content-Type: application/json" \\
-        -d "{\\"token\\":\\"$PIPEPUSH_TOKEN\\",\\"status\\":\\"$CI_JOB_STATUS\\",\\"pipeline\\":\\"$CI_PIPELINE_NAME\\",\\"branch\\":\\"$CI_COMMIT_REF_NAME\\",\\"commit\\":\\"$CI_COMMIT_SHA\\"}"`;
+        -d "{\\"token\\":\\"$PIPEPUSH_TOKEN\\",\\"status\\":\\"$STATUS\\",\\"pipeline\\":\\"$CI_PIPELINE_NAME\\",\\"branch\\":\\"$CI_COMMIT_REF_NAME\\",\\"commit\\":\\"$CI_COMMIT_SHA\\"}"
+
+# Optional: also attach build logs (E2E-encrypted, shown in the run detail view).
+# The curl image has no jq, so download the pipepush binary — it escapes + caps the
+# log for you. Pipe your build to build.log ("your-build 2>&1 | tee build.log") in
+# the build job, cache/artifact it into this job, then:
+#   pipepush send --token "$PIPEPUSH_TOKEN" --status "$STATUS" \\
+#     --pipeline "$CI_PIPELINE_NAME" --branch "$CI_COMMIT_REF_NAME" \\
+#     --commit "$CI_COMMIT_SHA" --logs-file build.log`;
 }
 
 function bitbucketSnippet(token: string, server: string): string {
@@ -65,7 +95,17 @@ pipelines:
             if [ "$BITBUCKET_EXIT_CODE" = "0" ]; then STATUS=success; else STATUS=failure; fi
             curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" \\
               -H "Content-Type: application/json" \\
-              -d "{\\"token\\":\\"$PIPEPUSH_TOKEN\\",\\"status\\":\\"$STATUS\\",\\"pipeline\\":\\"$BITBUCKET_REPO_SLUG\\",\\"branch\\":\\"$BITBUCKET_BRANCH\\",\\"commit\\":\\"$BITBUCKET_COMMIT\\",\\"runId\\":\\"$BITBUCKET_BUILD_NUMBER\\"}"`;
+              -d "{\\"token\\":\\"$PIPEPUSH_TOKEN\\",\\"status\\":\\"$STATUS\\",\\"pipeline\\":\\"$BITBUCKET_REPO_SLUG\\",\\"branch\\":\\"$BITBUCKET_BRANCH\\",\\"commit\\":\\"$BITBUCKET_COMMIT\\",\\"runId\\":\\"$BITBUCKET_BUILD_NUMBER\\"}"
+
+# Optional: also attach build logs (E2E-encrypted, shown in the run detail view).
+# Pipe your build step to a file — "your-build 2>&1 | tee build.log" — then build
+# the JSON with jq (available on Bitbucket's default images) and send the tail:
+            LOGS=$(tail -c 16000 build.log 2>/dev/null || true)
+            jq -nc --arg token "$PIPEPUSH_TOKEN" --arg status "$STATUS" \\
+              --arg pipeline "$BITBUCKET_REPO_SLUG" --arg branch "$BITBUCKET_BRANCH" \\
+              --arg commit "$BITBUCKET_COMMIT" --arg runId "$BITBUCKET_BUILD_NUMBER" --arg logs "$LOGS" \\
+              '{token:$token,status:$status,pipeline:$pipeline,branch:$branch,commit:$commit,runId:$runId,logs:$logs}' \\
+              | curl -sf -X POST "$PIPEPUSH_SERVER/api/webhook" -H "Content-Type: application/json" -d @-`;
 }
 
 function otherSnippet(token: string, server: string): string {
@@ -73,12 +113,13 @@ function otherSnippet(token: string, server: string): string {
   -H "Content-Type: application/json" \\
   -d '{"token":"${token}","status":"success","pipeline":"CI","branch":"main","commit":"abc1234"}'
 
-# status accepts CI-native values (passed, failed, aborted, …) — normalized server-side.
+# status must be one of: success, failure, cancelled, running, skipped (the raw
+# webhook does NOT normalize — the pipepush CLI/MCP map passed/failed/aborted for you).
 # Fields: token (required), status (required), pipeline, branch, commit, runId, duration, message, logs.
 
 # Optional: attach build logs (stored end-to-end encrypted, shown in the run
 # detail view). Build the JSON with jq so arbitrary log text is escaped safely:
-LOGS=$(tail -c 4000 build.log 2>/dev/null || true)
+LOGS=$(tail -c 16000 build.log 2>/dev/null || true)
 jq -nc --arg token "${token}" --arg status "success" --arg pipeline "CI" \\
       --arg branch "main" --arg commit "abc1234" --arg logs "$LOGS" \\
       '{token:$token,status:$status,pipeline:$pipeline,branch:$branch,commit:$commit,logs:$logs}' \\

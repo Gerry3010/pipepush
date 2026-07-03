@@ -116,13 +116,14 @@ type runsListIn struct {
 
 type sendIn struct {
 	Token    string `json:"token" jsonschema:"the plaintext pp_ token"`
-	Status   string `json:"status" jsonschema:"CI status, e.g. success|failure|cancelled|running|skipped (normalized server-side)"`
+	Status   string `json:"status" jsonschema:"CI status, e.g. success|failure|cancelled|running|skipped (normalized client-side)"`
 	Pipeline string `json:"pipeline,omitempty" jsonschema:"pipeline name; required for project-wide tokens"`
 	RunID    string `json:"runId,omitempty" jsonschema:"CI run ID/number"`
 	Commit   string `json:"commit,omitempty" jsonschema:"commit SHA"`
 	Branch   string `json:"branch,omitempty" jsonschema:"branch name"`
 	Duration string `json:"duration,omitempty" jsonschema:"run duration, e.g. 3m12s"`
 	Message  string `json:"message,omitempty" jsonschema:"free-form message"`
+	Logs     string `json:"logs,omitempty" jsonschema:"build log output; stored E2E-encrypted, server keeps the last 16 KB"`
 }
 
 func registerTools(s *mcp.Server) {
@@ -329,6 +330,7 @@ func registerTools(s *mcp.Server) {
 			Branch:   in.Branch,
 			Duration: in.Duration,
 			Message:  in.Message,
+			Logs:     in.Logs,
 		})
 		if err != nil {
 			return nil, nil, err
