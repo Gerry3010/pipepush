@@ -17,6 +17,7 @@ import (
 var validStatuses = map[string]bool{
 	"success":   true,
 	"failure":   true,
+	"warning":   true,
 	"cancelled": true,
 	"running":   true,
 	"skipped":   true,
@@ -58,7 +59,7 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !validStatuses[req.Status] {
-		writeError(w, http.StatusBadRequest, "status must be one of: success, failure, cancelled, running, skipped")
+		writeError(w, http.StatusBadRequest, "status must be one of: success, failure, warning, cancelled, running, skipped")
 		return
 	}
 

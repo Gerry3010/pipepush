@@ -36,6 +36,8 @@ func statusColor(status string) lipgloss.Color {
 		return colorSuccess
 	case "failure":
 		return colorError
+	case "warning":
+		return colorWarning
 	case "cancelled":
 		return colorMuted
 	case "running":
@@ -53,6 +55,8 @@ func statusGlyph(status string) string {
 		return "✓"
 	case "failure":
 		return "✗"
+	case "warning":
+		return "⚠"
 	case "cancelled":
 		return "⊘"
 	case "running":

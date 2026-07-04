@@ -80,6 +80,23 @@ export function IconChevronLeft(p: IconProps) {
   );
 }
 
+export function IconPlus(p: IconProps) {
+  return (
+    <Line {...p}>
+      <path d="M12 5v14M5 12h14" />
+    </Line>
+  );
+}
+
+export function IconSearch(p: IconProps) {
+  return (
+    <Line {...p}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+    </Line>
+  );
+}
+
 /* ---------- security (Login) ---------- */
 
 export function IconLock(p: IconProps) {
@@ -125,6 +142,17 @@ export function IconCross(p: IconProps) {
   );
 }
 
+// Warning — triangle with an exclamation.
+export function IconWarning(p: IconProps) {
+  return (
+    <Line {...p}>
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </Line>
+  );
+}
+
 // Cancelled — circle with a slash (⊘).
 export function IconSlash(p: IconProps) {
   return (
@@ -161,6 +189,8 @@ export function StatusIcon({ status, ...p }: { status: string } & IconProps) {
       return <IconCheck {...p} />;
     case "failure":
       return <IconCross {...p} />;
+    case "warning":
+      return <IconWarning {...p} />;
     case "cancelled":
       return <IconSlash {...p} />;
     case "running":

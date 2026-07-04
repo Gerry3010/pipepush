@@ -8,6 +8,8 @@ func NormalizeStatus(s string) string {
 		return "success"
 	case "failure", "failed", "error", "broken":
 		return "failure"
+	case "warning", "warn", "unstable":
+		return "warning"
 	case "cancelled", "canceled", "aborted":
 		return "cancelled"
 	case "running", "started", "in_progress", "pending":

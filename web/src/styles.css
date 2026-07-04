@@ -529,6 +529,9 @@ select:focus {
 .run-failure {
   --s: var(--fail);
 }
+.run-warning {
+  --s: var(--idle);
+}
 .run-running {
   --s: var(--run);
 }
@@ -951,9 +954,117 @@ select:focus {
 
 /* ---------- desktop ---------- */
 
+/* ---------- run filter (dashboard) ---------- */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+}
+.fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.34rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.fchip svg {
+  font-size: 0.95rem;
+}
+.fchip b {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+/* category colours on the glyphs — a traffic-light hint even when inactive */
+.fchip.f-pass svg {
+  color: var(--pass);
+}
+.fchip.f-warn svg {
+  color: var(--idle);
+}
+.fchip.f-fail svg {
+  color: var(--fail);
+}
+.fchip:hover {
+  color: var(--text);
+}
+.fchip.on {
+  color: var(--text);
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 12%, var(--panel));
+}
+.fchip.f-pass.on {
+  color: var(--pass);
+  border-color: color-mix(in srgb, var(--pass) 55%, var(--line-2));
+  background: color-mix(in srgb, var(--pass) 12%, var(--panel));
+}
+.fchip.f-warn.on {
+  color: var(--idle);
+  border-color: color-mix(in srgb, var(--idle) 55%, var(--line-2));
+  background: color-mix(in srgb, var(--idle) 12%, var(--panel));
+}
+.fchip.f-fail.on {
+  color: var(--fail);
+  border-color: color-mix(in srgb, var(--fail) 55%, var(--line-2));
+  background: color-mix(in srgb, var(--fail) 12%, var(--panel));
+}
+
+/* ---------- search row (projects) ---------- */
+.search-row {
+  position: relative;
+  margin: 0 0 1rem;
+}
+.search-ico {
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-2);
+  font-size: 1.05rem;
+  pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  padding-left: 2.4rem;
+}
+
+/* ---------- floating action button ---------- */
+.fab {
+  position: fixed;
+  right: 1.1rem;
+  bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  z-index: 60;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand);
+  color: #fff;
+  border: 0;
+  font-size: 1.5rem;
+  box-shadow: 0 8px 22px rgba(123, 108, 255, 0.45);
+}
+.fab:hover {
+  background: color-mix(in srgb, var(--brand) 88%, white);
+}
+.fab svg {
+  display: block;
+}
+
 @media (min-width: 720px) {
   .content {
     padding: 1.75rem 1.5rem 3rem;
+  }
+  .fab {
+    bottom: 2rem;
+    right: 2rem;
   }
   .tabbar {
     display: none;

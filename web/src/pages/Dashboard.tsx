@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { decrypt } from "../crypto/session";
 import { useAutoRefresh } from "../useAutoRefresh";
 import { cachePipelineNames } from "../nameCache";
 import { RunFeed, RunItem } from "../components/RunFeed";
-import { IconRefresh } from "../components/icons";
+import { IconRefresh, IconCheck, IconWarning, IconCross } from "../components/icons";
 
 interface Summary {
   pass: number;
@@ -12,11 +12,31 @@ interface Summary {
   running: number;
 }
 
+type Filter = "all" | "success" | "warning" | "error";
+
+// "Warning" groups the amber/grey non-critical outcomes (a real `warning`
+// status plus skipped and cancelled runs).
+const WARN_STATUSES = new Set(["warning", "skipped", "cancelled"]);
+
+function matchesFilter(status: string, f: Filter): boolean {
+  switch (f) {
+    case "success":
+      return status === "success";
+    case "error":
+      return status === "failure";
+    case "warning":
+      return WARN_STATUSES.has(status);
+    default:
+      return true;
+  }
+}
+
 export function Dashboard() {
   const [recent, setRecent] = useState<RunItem[]>([]);
   const [summary, setSummary] = useState<Summary>({ pass: 0, fail: 0, running: 0 });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -79,6 +99,17 @@ export function Dashboard() {
   // Auto-refresh on a timer, on incoming Web Push, and on tab re-focus.
   useAutoRefresh(load);
 
+  const counts = useMemo(
+    () => ({
+      all: recent.length,
+      success: recent.filter((r) => r.status === "success").length,
+      warning: recent.filter((r) => WARN_STATUSES.has(r.status)).length,
+      error: recent.filter((r) => r.status === "failure").length,
+    }),
+    [recent],
+  );
+  const filtered = recent.filter((r) => matchesFilter(r.status, filter));
+
   return (
     <div>
       <div className="page-head">
@@ -117,6 +148,42 @@ export function Dashboard() {
       )}
 
       <h2>Recent runs</h2>
+      {recent.length > 0 && (
+        <div className="filter-bar" role="tablist" aria-label="Filter runs by status">
+          <button
+            role="tab"
+            aria-selected={filter === "all"}
+            className={`fchip${filter === "all" ? " on" : ""}`}
+            onClick={() => setFilter("all")}
+          >
+            All <b>{counts.all}</b>
+          </button>
+          <button
+            role="tab"
+            aria-selected={filter === "success"}
+            className={`fchip f-pass${filter === "success" ? " on" : ""}`}
+            onClick={() => setFilter("success")}
+          >
+            <IconCheck /> Success <b>{counts.success}</b>
+          </button>
+          <button
+            role="tab"
+            aria-selected={filter === "warning"}
+            className={`fchip f-warn${filter === "warning" ? " on" : ""}`}
+            onClick={() => setFilter("warning")}
+          >
+            <IconWarning /> Warning <b>{counts.warning}</b>
+          </button>
+          <button
+            role="tab"
+            aria-selected={filter === "error"}
+            className={`fchip f-fail${filter === "error" ? " on" : ""}`}
+            onClick={() => setFilter("error")}
+          >
+            <IconCross /> Error <b>{counts.error}</b>
+          </button>
+        </div>
+      )}
       {loading && <p className="muted">Loading…</p>}
       {!loading && recent.length === 0 && (
         <div className="empty">
@@ -124,7 +191,10 @@ export function Dashboard() {
           CI/CD.
         </div>
       )}
-      <RunFeed items={recent} />
+      {!loading && recent.length > 0 && filtered.length === 0 && (
+        <div className="empty">No {filter} runs right now.</div>
+      )}
+      <RunFeed items={filtered} />
     </div>
   );
 }
