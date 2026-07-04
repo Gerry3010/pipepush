@@ -10,6 +10,7 @@ import {
   biometricEmail,
   biometricErrorMessage,
 } from "../crypto/biometric";
+import { IconFaceId, IconLock } from "../components/icons";
 
 export function Login({ onAuth }: { onAuth: () => void }) {
   const [email, setEmail] = useState(getEmail() ?? "");
@@ -83,7 +84,7 @@ export function Login({ onAuth }: { onAuth: () => void }) {
       {canBio && !register && (
         <>
           <button className="btn btn-primary btn-block" onClick={unlockBio} disabled={bioBusy}>
-            🔐 {bioBusy ? "Unlocking…" : `Unlock with Face ID`}
+            <IconFaceId className="i-inline" /> {bioBusy ? "Unlocking…" : `Unlock with Face ID`}
           </button>
           {biometricEmail() && <p className="muted" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>{biometricEmail()}</p>}
           <div className="divider">or use password</div>
@@ -122,7 +123,7 @@ export function Login({ onAuth }: { onAuth: () => void }) {
         </button>
       </p>
       <p className="hint">
-        🔒 Your password never leaves this device unencrypted. It unlocks an end-to-end encryption
+        <IconLock className="i-inline" /> Your password never leaves this device unencrypted. It unlocks an end-to-end encryption
         key — the server can't read your pipeline data.
       </p>
     </div>

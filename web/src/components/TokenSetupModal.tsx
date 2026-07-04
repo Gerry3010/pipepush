@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { IconCheck } from "./icons";
 
 type Provider = "github" | "gitlab" | "bitbucket" | "other";
 
@@ -178,7 +179,13 @@ export function TokenSetupModal({ token, serverUrl, pipelineBound, onClose }: Pr
         <div className="token-row">
           <code className="token-value">{token}</code>
           <button className="link-btn" onClick={() => copy(token, "token")}>
-            {copied === "token" ? "copied ✓" : "copy"}
+            {copied === "token" ? (
+              <>
+                copied <IconCheck className="i-inline" />
+              </>
+            ) : (
+              "copy"
+            )}
           </button>
         </div>
 
@@ -196,7 +203,13 @@ export function TokenSetupModal({ token, serverUrl, pipelineBound, onClose }: Pr
 
         <div className="snippet-wrap">
           <button className="copy-snippet" onClick={() => copy(snippet, "snippet")}>
-            {copied === "snippet" ? "copied ✓" : "copy"}
+            {copied === "snippet" ? (
+              <>
+                copied <IconCheck className="i-inline" />
+              </>
+            ) : (
+              "copy"
+            )}
           </button>
           <pre className="snippet">{snippet}</pre>
         </div>

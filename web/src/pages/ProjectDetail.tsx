@@ -6,6 +6,7 @@ import { routingKey } from "../crypto/routing";
 import { TokenSetupModal } from "../components/TokenSetupModal";
 import { RunFeed, RunItem } from "../components/RunFeed";
 import { useAutoRefresh } from "../useAutoRefresh";
+import { IconRefresh, IconDot, IconCircle } from "../components/icons";
 
 interface RunPayload {
   status: string;
@@ -110,7 +111,7 @@ export function ProjectDetail() {
           title="Refresh"
           aria-label="Refresh runs"
         >
-          {refreshing ? "…" : "↻"}
+          <IconRefresh className={refreshing ? "spin" : undefined} />
         </button>
       </div>
       {err && <p className="error">{err}</p>}
@@ -179,7 +180,12 @@ export function ProjectDetail() {
           {tokens.map((t) => (
             <li key={t.id} className={t.active ? "" : "revoked"}>
               <span className="tok-name">
-                {t.active ? "●" : "○"} {decrypt(t.encryptedName)}
+                {t.active ? (
+                  <IconDot className="i-inline" />
+                ) : (
+                  <IconCircle className="i-inline" />
+                )}{" "}
+                {decrypt(t.encryptedName)}
               </span>
               {t.active ? (
                 <button

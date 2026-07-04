@@ -4,6 +4,7 @@ import { decrypt } from "../crypto/session";
 import { useAutoRefresh } from "../useAutoRefresh";
 import { cachePipelineNames } from "../nameCache";
 import { RunFeed, RunItem } from "../components/RunFeed";
+import { IconRefresh } from "../components/icons";
 
 interface Summary {
   pass: number;
@@ -92,7 +93,7 @@ export function Dashboard() {
           title="Refresh"
           aria-label="Refresh runs"
         >
-          {refreshing ? "…" : "↻"}
+          <IconRefresh className={refreshing ? "spin" : undefined} />
         </button>
       </div>
 

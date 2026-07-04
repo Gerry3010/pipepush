@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../api/client";
 import { decrypt } from "../crypto/session";
-import { statusGlyph, relTime } from "../components/RunFeed";
+import { relTime } from "../components/RunFeed";
+import { StatusIcon, IconCheck, IconChevronLeft } from "../components/icons";
 
 interface RunPayload {
   status: string;
@@ -85,7 +86,7 @@ export function RunDetail() {
       <div className="eyebrow">Run</div>
       <div className="rd-hero">
         <span className="node" aria-hidden="true">
-          {statusGlyph[status] ?? "•"}
+          <StatusIcon status={status} />
         </span>
         <div>
           <h1>{d?.pipeline || "Pipeline run"}</h1>
@@ -120,7 +121,13 @@ export function RunDetail() {
       {d?.logs ? (
         <div className="snippet-wrap">
           <button className="copy-snippet" onClick={copyLogs}>
-            {copied ? "copied ✓" : "copy"}
+            {copied ? (
+              <>
+                copied <IconCheck className="i-inline" />
+              </>
+            ) : (
+              "copy"
+            )}
           </button>
           <pre className="snippet">{d.logs}</pre>
         </div>
@@ -132,8 +139,8 @@ export function RunDetail() {
       )}
 
       <p style={{ marginTop: "1.5rem" }}>
-        <Link className="link-btn" to="/">
-          ← Back to runs
+        <Link className="link-btn back-link" to="/">
+          <IconChevronLeft className="i-inline" /> Back to runs
         </Link>
       </p>
     </div>

@@ -274,6 +274,9 @@ button {
   border-color: var(--brand);
 }
 .btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.5rem;
   width: 2.4rem;
   height: 2.4rem;
@@ -615,6 +618,41 @@ select:focus {
   }
   50% {
     opacity: 0.35;
+  }
+}
+
+/* ---------- SVG icon set ----------
+   Icons size at 1em and colour via currentColor, so the surrounding
+   font-size / color rules keep driving them (see components/icons.tsx). */
+.brand .bolt svg {
+  height: 1em;
+  width: auto;
+  display: block;
+}
+.tab-item .ic svg,
+.btn-icon svg {
+  display: block;
+}
+.run .node svg,
+.rd-hero .node svg {
+  display: block;
+  margin: 0 auto;
+}
+/* icons that sit inline with text (buttons, hints, back link) */
+.i-inline {
+  vertical-align: -0.15em;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
   }
 }
 

@@ -9,6 +9,7 @@ import { Projects } from "./pages/Projects";
 import { ProjectDetail } from "./pages/ProjectDetail";
 import { RunDetail } from "./pages/RunDetail";
 import { Settings } from "./pages/Settings";
+import { IconBolt, IconActivity, IconGrid, IconGear } from "./components/icons";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
@@ -41,7 +42,7 @@ export function App() {
       <header className="topbar">
         <Link to="/" className="brand">
           <span className="bolt" aria-hidden="true">
-            ⚡
+            <IconBolt />
           </span>
           pipepush
         </Link>
@@ -110,19 +111,19 @@ export function App() {
         <nav className="tabbar" aria-label="Primary">
           <NavLink to="/" end className="tab-item">
             <span className="ic" aria-hidden="true">
-              ◉
+              <IconActivity />
             </span>
             Runs
           </NavLink>
           <NavLink to="/projects" className="tab-item">
             <span className="ic" aria-hidden="true">
-              ▦
+              <IconGrid />
             </span>
             Projects
           </NavLink>
           <NavLink to="/settings" className="tab-item">
             <span className="ic" aria-hidden="true">
-              ⚙
+              <IconGear />
             </span>
             Settings
           </NavLink>

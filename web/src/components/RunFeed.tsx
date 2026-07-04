@@ -3,14 +3,7 @@
 // Each card links to the run's detail view.
 
 import { Link } from "react-router-dom";
-
-export const statusGlyph: Record<string, string> = {
-  success: "✓",
-  failure: "✗",
-  cancelled: "⊘",
-  running: "●",
-  skipped: "○",
-};
+import { StatusIcon } from "./icons";
 
 export interface RunItem {
   key: string;
@@ -48,7 +41,7 @@ function Run({ r }: { r: RunItem }) {
     <li>
       <Link className={`run run-${r.status}`} to={`/runs/${r.key}`}>
         <span className="node" aria-hidden="true">
-          {statusGlyph[r.status] ?? "•"}
+          <StatusIcon status={r.status} />
         </span>
         <div className="run-body">
           <div className="run-title">
