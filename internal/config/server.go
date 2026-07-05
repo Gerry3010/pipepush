@@ -37,7 +37,9 @@ func LoadServerConfig() (*ServerConfig, error) {
 		StaticDir:             os.Getenv("STATIC_DIR"),
 	}
 
-	expirySecs := getEnv("JWT_EXPIRY_SECONDS", strconv.Itoa(int((24 * time.Hour).Seconds())))
+	// Default session length is 90 days so the CLI doesn't need frequent
+	// re-login. Override with JWT_EXPIRY_SECONDS for a shorter/longer window.
+	expirySecs := getEnv("JWT_EXPIRY_SECONDS", strconv.Itoa(int((90 * 24 * time.Hour).Seconds())))
 	secs, err := strconv.Atoi(expirySecs)
 	if err != nil {
 		return nil, fmt.Errorf("invalid JWT_EXPIRY_SECONDS: %w", err)
