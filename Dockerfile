@@ -10,10 +10,13 @@ COPY web/ ./
 RUN npm run build
 
 # --- Stage 2: build the Go server ---
-# Go >= 1.26.10 is enforced by the `go` line in go.mod (the image sets
-# GOTOOLCHAIN=local, so an older toolchain fails the build instead of
-# silently producing a binary without the eMudhra/emSign fix).
-FROM golang:1.26-alpine3.24 AS build
+# Pinned to a patch release: Go links the standard library into the binary,
+# so a Go security release only reaches production through a rebuild with it.
+# 1.26.11 fixes net/http (GO-2026-6859, SEC-30). The `go` line in go.mod
+# enforces the same minimum (the image sets GOTOOLCHAIN=local, so an older
+# toolchain fails the build instead of silently producing an unfixed binary).
+# Bump both together.
+FROM golang:1.26.11-alpine3.24 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
