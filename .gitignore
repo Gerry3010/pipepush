@@ -25,3 +25,6 @@ web/public/favicon.svg
 # OS / editor
 .DS_Store
 *.swp
+
+# Claude Code: lokale Freigaben können Befehle samt Zugangsdaten enthalten (SEC-8)
+.claude/settings.local.json
